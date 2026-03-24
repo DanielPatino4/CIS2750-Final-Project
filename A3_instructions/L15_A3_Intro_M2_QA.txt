@@ -1,0 +1,323 @@
+CIS*2750
+
+Software Systems Development and Integration
+Mar 10, 2026
+
+"You can check out any time you like, but you can never leave."
+— Eagles, "Hotel California", Hotel California (1976)
+
+Assignment Updates
+A3 due March 27
+
+autograder will be available this week.
+Get A3 .gitlab-ci.yml from Moodle (DO NOT copy from A2!)
+
+A2 interviews continue this week
+No labs this week (grading interviews)
+
+2
+
+Goals for Today
+
+A3 Overview
+Know what you can start now vs what should wait for lectures
+Midterm structure
+Q/A
+3
+
+A3 Overview: Treasure Run Part Three
+
+Due: March 27, 23:59 EDT
+This is a user interface and integration assignment that brings together:
+Your existing A2 C code and Python bindings
+Persistence (JSON profiles)
+A text-based UI using curses
+Model-View-Controller (MVC) design pattern
+4
+
+A3 Grading
+
+70% – Required features (must complete all)
+Object-Oriented Python Design (MVC)
+Player Profile (JSON persistence)
+Curses User Interface
+Game runner ( run_game.py )
+
+30% – Extended features (choose any 2 of 4)
+Locked Doors (Switches)
+Collect All Treasure (win condition)
+Enhanced UI (color + minimap)
+Room-Specific Reset/Undo
+
+Key point: Maximum grade is 70% without extended features!
+
+5
+
+Grading: Demo Sessions
+
+A3 replaces grading interviews with a demo.
+
+A TA will run your game while asking you questions
+Rubric will be released later
+
+Autograder
+
+Regression testing with A2 tests/linters/code coverage
+MVC structure testing to verify compliance with A3 requirements
+will not run the A2 run_integration.py
+6
+
+What You Can Do NOW
+
+Repository Setup
+Clone your empty A3 GitLab repository
+Copy files from A2 (C code, makefiles, Python code)
+Structure Planning
+Review the required directory structure
+Identify where new files will go and create blank files
+Read through the assignment description
+7
+
+What You Can Do NOW (cont.)
+
+Code Review & Refactoring
+Review your A2 movement logic
+Consider what needs improvement
+If choosing "Switches" feature: plan your refactoring strategy
+Fix any lingering errors
+If you have things from A2 that aren't working, fix them now
+8
+
+A3 Directory Structure
+python/
+├── run_game.py
+└── treasure_runner/
+├── __init__.py
+├── bindings/
+│
+├── __init__.py
+│
+└── bindings.py
+├── models/
+│
+├── __init__.py
+│
+├── exceptions.py
+│
+├── game_engine.py
+│
+└── player.py
+└── ui/
+├── __init__.py
+└── game_ui.py
+
+# NEW - game launcher
+# SAME as A2
+# SAME as A2
+
+# NEW MODULE
+
+Plus all your C files, Makefiles, assets/ , dist/ as before.
+
+9
+
+Future lecture topics related to A3
+Model/View/Controller
+curses library
+GameUI
+
+persistence
+
+class
+
+JSON files
+
+10
+
+Extended Feature Options
+pick 2
+
+11
+
+Locked Doors (Switches)
+
+Gated portals + pressure plate switches
+Pushable activates switch to unlock portal
+May require code refactoring
+
+Collect All Treasure
+
+Win condition when all treasure collected
+Victory screen with stats
+Progress display in UI
+12
+
+Enhanced UI
+
+Add color to the display
+Create minimap showing room graph
+Show visited rooms, current position
+Real-time updates as player explores
+
+Room-Specific Reset/Undo
+
+Undo last move (position + state)
+Reset current room to initial state
+User selectable with keystrokes
+Preserve other rooms and overall progress
+13
+
+Important Reminders
+
+1. Don't break A2 functionality – autograder will regression test
+2. Don't edit existing .h files – add new ones if needed
+3. C side owns the data – don't replicate state in Python
+4. Test everything – code coverage requirements still apply
+
+14
+
+Midterm 2 Review
+
+15
+
+Midterm Logistics
+March 14, 12:30 pm
+Rohz 104
+2 hours
+
+Lectures 8-14, labs, and assignments
+closed book
+Composition
+55 multiple-choice questions
+~16 multi-select
+-includes a Python code trace
+
+Note: Partial credit given for multi-select as long as no wrong answer is chosen.
+16
+
+Major Topics on Midterm
+
+1. Python Language
+2. Python-C Integration
+3. Testing
+4. Code Coverage
+5. Refactoring and Software Design
+6. Object-Oriented Python
+7. Imports and Modules
+17
+
+Python Fundamentals*
+
+scripting languages
+Python's memory model
+Variable binding
+execution model: bytecode and Python Virtual Machine
+Type system: strong vs. weak, static vs. dynamic typing
+Duck typing: behavior over explicit type checking
+Type hints
+Data structures: lists, tuples, dictionaries, sets
+Mutability vs. immutability
+18
+
+Python-C Integration
+
+Loading shared c libraries
+Declaring function signatures: argtypes and restype
+Type mapping between Python and C
+Output parameters: using byref() and pointers
+String handling: encoding/decoding between Python str and C char*
+Creating wrapper functions
+Error handling: converting C status codes to Python exceptions
+Memory ownership between Python and C
+Integration testing across language boundaries
+19
+
+Testing & Quality Assurance
+
+Black-box testing
+Clear-box (white-box) testing
+Code coverage: line coverage, branch coverage, decision coverage
+Stub functions
+Suite vs. TCase: hierarchy and organization
+Fixtures: setup and teardown functions
+20
+
+Refactoring & Design
+
+Refactoring definition: changing structure without changing behavior
+Refactoring vs. feature work
+When to refactor
+When to test
+Refactoring steps
+Separation of concerns
+
+Code smells
+
+Long functions
+Duplicated logic
+Dead/commented-out code
+Primitive obsession
+Overloaded parameters
+Shotgun surgery risk
+
+21
+
+Object-Oriented Python
+
+OO principles: encapsulation, abstraction, inheritance, polymorphism
+Class vs. instance attributes
+The self parameter
+__init__ method
+Properties: @property decorator for getters/setters
+Single underscore prefix
+Dunder methods ( __init__ , __str__ , __repr__ )
+Composition vs. Inheritance:
+22
+
+Python Imports and Modules
+
+Imports and Modules:
+Package structure and __init__.py
+Absolute vs. relative imports
+import module vs. from module import Class
+Forward references
+23
+
+Study Strategy
+
+What to Review:
+Lecture slides L8-L14
+Assignment specifications ( A2)
+Lab 3 materials
+Your own code from A1 and A2
+Practice tracing Python code by hand
+24
+
+Q&A
+
+25
+
+Looking Forward
+
+Thursday: MVC pattern + curses
+introduction
+Next week: More curses, UI
+design
+A2 interviews continue this week
+Midterm on Saturday (L8-L14 +
+labs + assignments)
+Start A3 setup and planning
+NOW
+
+Self Check
+
+1. What can you work on for A3
+right now?
+2. Which 2 extended features
+interest you?
+3. What's the maximum grade
+without extended features?
+4. What files do you need from A2?
+26
+
+

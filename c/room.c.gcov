@@ -1,0 +1,1156 @@
+        -:    0:Source:src/room.c
+        -:    0:Graph:coverage_build/room.gcno
+        -:    0:Data:coverage_build/room.gcda
+        -:    0:Runs:74
+        -:    1:#include "room.h"
+        -:    2:#include <stdlib.h>
+        -:    3:#include <string.h>
+        -:    4:
+        -:    5:/* ============================================================
+        -:    6: * ROOM MODULE IMPLEMENTATION
+        -:    7: *
+        -:    8: * Memory ownership rules:
+        -:    9: *   - Room owns ALL pointers inside it
+        -:   10: *   - When you "set" something, ownership transfers TO the room
+        -:   11: *   - room_destroy() must free EVERYTHING
+        -:   12: * ============================================================ */
+        -:   13:
+        -:   14:
+        -:   15:/* ============================================================
+        -:   16: * Creation
+        -:   17: * ============================================================ */
+        -:   18:
+        -:   19: /* Parameters:
+        -:   20: *   id:
+        -:   21: *     Unique room ID.
+        -:   22: *   name:
+        -:   23: *     Room name (room owns the memory).
+        -:   24: *   width, height:
+        -:   25: *     Room dimensions
+        -:   26: *
+        -:   27: * Preconditions:
+        -:   28: *   No preconditions. name may be NULL.
+        -:   29: *
+        -:   30: * Postconditions:
+        -:   31: *   On success, returns a newly allocated Room with a correctly set name.
+        -:   32: *   All other pointers in the Room must be initialized to NULL.
+        -:   33: *
+        -:   34: * Returns:
+        -:   35: *   Newly allocated Room on success
+        -:   36: *   NULL on allocation failure
+        -:   37: */
+function room_create called 91 returned 100% blocks executed 86%
+       91:   38:Room *room_create(int id, const char *name, int width, int height) {
+        -:   39:    //allocation failure
+       91:   40:    Room *r = malloc(sizeof(Room));
+       91:   41:    if (r == NULL) {
+branch  0 taken 0 (fallthrough)
+branch  1 taken 91
+    #####:   42:        return NULL; 
+        -:   43:    }
+        -:   44:
+        -:   45:    //initialize basics
+       91:   46:    r->id = id;
+       91:   47:    r->width = (width < 1) ? 1 : width;   // clamp to minimum 1
+       91:   48:    r->height = (height < 1) ? 1 : height; // clamp to minimum 1
+        -:   49:
+        -:   50:    //copy name (Room takes ownership)
+       91:   51:    r->name = (name != NULL) ? strdup(name) : NULL;
+branch  0 taken 18 (fallthrough)
+branch  1 taken 73
+call    2 returned 18
+        -:   52:
+        -:   53:    //postcondition: other pointers NULL
+       91:   54:    r->floor_grid = NULL;
+       91:   55:    r->portals = NULL;
+       91:   56:    r->portal_count = 0;
+       91:   57:    r->treasures = NULL;
+       91:   58:    r->treasure_count = 0;
+        -:   59:    
+        -:   60:    // A2: Initialize pushables and switches
+       91:   61:    r->pushables = NULL;
+       91:   62:    r->pushable_count = 0;
+       91:   63:    r->switches = NULL;
+       91:   64:    r->switch_count = 0;
+        -:   65:
+       91:   66:    return r;
+        -:   67:}
+        -:   68:
+        -:   69:
+        -:   70:/* ============================================================
+        -:   71: * Basic Queries
+        -:   72: * ============================================================ */
+        -:   73:
+        -:   74:/*
+        -:   75: * Retrieve the room width in tiles.
+        -:   76: *
+        -:   77: * Returns:
+        -:   78: *   width on success
+        -:   79: *   0 if r is NULL
+        -:   80: */
+function room_get_width called 9 returned 100% blocks executed 100%
+        9:   81:int room_get_width(const Room *r) {
+        9:   82:    if (r != NULL) {
+branch  0 taken 8 (fallthrough)
+branch  1 taken 1
+        8:   83:        return r->width;
+        -:   84:    }
+        1:   85:    return 0;
+        -:   86:}
+        -:   87:
+        -:   88:/*
+        -:   89: * Retrieve the room height in tiles.
+        -:   90: *
+        -:   91: * Returns:
+        -:   92: *   height on success
+        -:   93: *   0 if r is NULL
+        -:   94: */
+function room_get_height called 9 returned 100% blocks executed 100%
+        9:   95:int room_get_height(const Room *r) {
+        9:   96:    if (r != NULL) {
+branch  0 taken 8 (fallthrough)
+branch  1 taken 1
+        8:   97:        return r->height;
+        -:   98:    }
+        1:   99:    return 0;
+        -:  100:}
+        -:  101:
+        -:  102:
+        -:  103:/* ============================================================
+        -:  104: * Setters (Ownership Transfer Pattern)
+        -:  105: * ============================================================ */
+        -:  106:
+        -:  107: /*
+        -:  108: * Set the floor grid (ownership transfers to the room). 
+        -:  109: *
+        -:  110: * Parameters:
+        -:  111: *   floor_grid:
+        -:  112: *     Array of width * height booleans (true = floor).
+        -:  113: *     Pass NULL to indicate implicit boundary walls.
+        -:  114: *
+        -:  115: * Preconditions:
+        -:  116: *   r must not be NULL.
+        -:  117: *   If floor_grid is non-NULL, it must be width * height entries.
+        -:  118: *
+        -:  119: * Postconditions:
+        -:  120: *   On success, ownership of floor_grid transfers to the room.
+        -:  121: *   If the floor grid in the room was previously initialized:
+        -:  122: *   - It must be overwritten by the new grid.
+        -:  123: *   - The old grid must be freed.
+        -:  124: *
+        -:  125: * Returns:
+        -:  126: *   OK on success
+        -:  127: *   INVALID_ARGUMENT if room is NULL
+        -:  128: */
+function room_set_floor_grid called 80 returned 100% blocks executed 100%
+       80:  129:Status room_set_floor_grid(Room *r, bool *floor_grid) {
+       80:  130:    if (r == NULL) {
+branch  0 taken 1 (fallthrough)
+branch  1 taken 79
+        1:  131:        return INVALID_ARGUMENT;
+        -:  132:    }
+        -:  133:
+        -:  134:    //post-condition
+       79:  135:    if (r->floor_grid != NULL) {
+branch  0 taken 1 (fallthrough)
+branch  1 taken 78
+        1:  136:        free(r->floor_grid);
+        -:  137:    }
+        -:  138:
+       79:  139:    r->floor_grid = floor_grid;
+        -:  140:
+       79:  141:    return OK;
+        -:  142:}
+        -:  143:
+        -:  144:/*
+        -:  145: * Set portals (ownership transfers to the room).
+        -:  146: *
+        -:  147: * Preconditions:
+        -:  148: *   r must not be NULL.
+        -:  149: *   If portal_count > 0, portals must not be NULL.
+        -:  150: *
+        -:  151: * Postconditions:
+        -:  152: *   On success, ownership of portals transfers to the room.
+        -:  153: *   If the portal array in the room was previously initialized:
+        -:  154: *   - It must be overwritten by the new portal array.
+        -:  155: *   - The new portal count must be correct.
+        -:  156: *   - The old portal array must be freed, along with old portal names.
+        -:  157: *
+        -:  158: * Returns:
+        -:  159: *   OK on success
+        -:  160: *   INVALID_ARGUMENT if room is NULL or parameters are inconsistent
+        -:  161: */
+function room_set_portals called 78 returned 100% blocks executed 67%
+       78:  162:Status room_set_portals(Room *r, Portal *portals, int portal_count) {
+       78:  163:    if (r == NULL) {
+branch  0 taken 1 (fallthrough)
+branch  1 taken 77
+        1:  164:        return INVALID_ARGUMENT;
+        -:  165:    }
+        -:  166:
+        -:  167:   //preconditon
+       77:  168:    if (portal_count > 0 && portals == NULL) {
+branch  0 taken 77 (fallthrough)
+branch  1 taken 0
+branch  2 taken 1 (fallthrough)
+branch  3 taken 76
+        1:  169:        return INVALID_ARGUMENT;
+        -:  170:    }
+        -:  171:
+        -:  172:    //Free old portals array if it exists
+       76:  173:    if (r->portals != NULL) {
+branch  0 taken 0 (fallthrough)
+branch  1 taken 76
+    #####:  174:        for (int i = 0; i < r->portal_count; i++) {
+branch  0 never executed
+branch  1 never executed (fallthrough)
+    #####:  175:            free(r->portals[i].name);
+        -:  176:        }
+    #####:  177:        free(r->portals);
+        -:  178:    }
+        -:  179:
+       76:  180:    r->portals = portals;
+       76:  181:    r->portal_count = portal_count;
+        -:  182:
+       76:  183:    return OK;
+        -:  184:}
+        -:  185:
+        -:  186:/*
+        -:  187: * Set treasures (ownership transfers to the room).
+        -:  188: *
+        -:  189: * Preconditions:
+        -:  190: *   r must not be NULL.
+        -:  191: *   If treasure_count > 0, treasures must not be NULL.
+        -:  192: *
+        -:  193: * Postconditions:
+        -:  194: *   On success, ownership of treasures transfers to the room.
+        -:  195: *   If the treasure array in the room was previously initialized:
+        -:  196: *   - It must be overwritten by the new treasure array.
+        -:  197: *   - The new treasure count must be correct.
+        -:  198: *   - The old treasure array must be freed, along with old treasure names.
+        -:  199: *
+        -:  200: * Returns:
+        -:  201: *   OK on success
+        -:  202: *   INVALID_ARGUMENT if room is NULL or parameters are inconsistent
+        -:  203: */
+function room_set_treasures called 76 returned 100% blocks executed 55%
+       76:  204:Status room_set_treasures(Room *r, Treasure *treasures, int treasure_count) {
+       76:  205:    if (r == NULL || (treasure_count > 0 && treasures == NULL)) {
+branch  0 taken 76 (fallthrough)
+branch  1 taken 0
+branch  2 taken 76 (fallthrough)
+branch  3 taken 0
+branch  4 taken 0 (fallthrough)
+branch  5 taken 76
+    #####:  206:        return INVALID_ARGUMENT;
+        -:  207:    }
+        -:  208:
+        -:  209:    //Free old treasures
+       76:  210:    if (r->treasures != NULL) {
+branch  0 taken 0 (fallthrough)
+branch  1 taken 76
+    #####:  211:        for (int i = 0; i < r->treasure_count; i++) {
+branch  0 never executed
+branch  1 never executed (fallthrough)
+    #####:  212:            free(r->treasures[i].name);
+        -:  213:        }
+    #####:  214:        free(r->treasures);
+        -:  215:    }
+        -:  216:
+       76:  217:    r->treasures = treasures;
+       76:  218:    r->treasure_count = treasure_count;
+        -:  219:
+       76:  220:    return OK;
+        -:  221:}
+        -:  222:
+        -:  223:/*
+        -:  224: * Set pushables (ownership transfers to the room).
+        -:  225: *
+        -:  226: * Returns:
+        -:  227: *   OK on success
+        -:  228: *   INVALID_ARGUMENT if room is NULL or parameters are inconsistent
+        -:  229: */
+function room_set_pushables called 0 returned 0% blocks executed 0%
+    #####:  230:Status room_set_pushables(Room *r, Pushable *pushables, int pushable_count) {
+    #####:  231:    if (r == NULL || (pushable_count > 0 && pushables == NULL)) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+branch  2 never executed (fallthrough)
+branch  3 never executed
+branch  4 never executed (fallthrough)
+branch  5 never executed
+    #####:  232:        return INVALID_ARGUMENT;
+        -:  233:    }
+        -:  234:
+        -:  235:    // Free old pushables
+    #####:  236:    if (r->pushables != NULL) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  237:        for (int i = 0; i < r->pushable_count; i++) {
+branch  0 never executed
+branch  1 never executed (fallthrough)
+    #####:  238:            free(r->pushables[i].name);
+        -:  239:        }
+    #####:  240:        free(r->pushables);
+        -:  241:    }
+        -:  242:
+    #####:  243:    r->pushables = pushables;
+    #####:  244:    r->pushable_count = pushable_count;
+        -:  245:
+    #####:  246:    return OK;
+        -:  247:}
+        -:  248:
+        -:  249:/*
+        -:  250: * Set switches (ownership transfers to the room).
+        -:  251: *
+        -:  252: * Returns:
+        -:  253: *   OK on success
+        -:  254: *   INVALID_ARGUMENT if room is NULL or parameters are inconsistent
+        -:  255: */
+function room_set_switches called 0 returned 0% blocks executed 0%
+    #####:  256:Status room_set_switches(Room *r, Switch *switches, int switch_count) {
+    #####:  257:    if (r == NULL || (switch_count > 0 && switches == NULL)) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+branch  2 never executed (fallthrough)
+branch  3 never executed
+branch  4 never executed (fallthrough)
+branch  5 never executed
+    #####:  258:        return INVALID_ARGUMENT;
+        -:  259:    }
+        -:  260:
+        -:  261:    // Free old switches (no strings to free in Switch struct)
+    #####:  262:    free(r->switches);
+        -:  263:
+    #####:  264:    r->switches = switches;
+    #####:  265:    r->switch_count = switch_count;
+        -:  266:
+    #####:  267:    return OK;
+        -:  268:}
+        -:  269:
+        -:  270:
+        -:  271:/* ============================================================
+        -:  272: * Treasure Management
+        -:  273: * ============================================================ */
+        -:  274:
+        -:  275:
+        -:  276:/*
+        -:  277: * Add a treasure into the room (ownership transfers to the room).
+        -:  278: *
+        -:  279: * Preconditions:
+        -:  280: *   r and treasure must not be NULL.
+        -:  281: *
+        -:  282: * Postconditions:
+        -:  283: *   On success, ownership of the new treasure transfers to the room.
+        -:  284: *   The treasures array is expanded to accommodate the new treasure.
+        -:  285: *   The existing treasures in the room must not be affected by the addition.
+        -:  286: *
+        -:  287: * Returns:
+        -:  288: *   OK on success
+        -:  289: *   INVALID_ARGUMENT if room or treasure is NULL
+        -:  290: *   NO_MEMORY on allocation failure
+        -:  291: */
+function room_place_treasure called 4 returned 100% blocks executed 82%
+        4:  292:Status room_place_treasure(Room *r, const Treasure *treasure) {
+        4:  293:    if (r == NULL || treasure == NULL) {
+branch  0 taken 3 (fallthrough)
+branch  1 taken 1
+branch  2 taken 1 (fallthrough)
+branch  3 taken 2
+        2:  294:        return INVALID_ARGUMENT;
+        -:  295:    }
+        -:  296:
+        2:  297:    char *copied_name = NULL;
+        2:  298:    if (treasure->name != NULL) {
+branch  0 taken 2 (fallthrough)
+branch  1 taken 0
+        2:  299:        copied_name = strdup(treasure->name);
+call    0 returned 2
+        2:  300:        if (copied_name == NULL) {
+branch  0 taken 0 (fallthrough)
+branch  1 taken 2
+    #####:  301:            return NO_MEMORY;
+        -:  302:        }
+        -:  303:    }
+        -:  304:
+        2:  305:    int new_count = r->treasure_count + 1;
+        2:  306:    Treasure *new_array = realloc(r->treasures, new_count * sizeof(Treasure));
+        2:  307:    if (new_array == NULL) {
+branch  0 taken 0 (fallthrough)
+branch  1 taken 2
+    #####:  308:        free(copied_name);
+    #####:  309:        return NO_MEMORY;  /* realloc failed */
+        -:  310:    }
+        -:  311:
+        2:  312:    int idx = r->treasure_count;  /* Index of new treasure */
+        2:  313:    new_array[idx] = *treasure;   /* Shallow copy (integers and pointers) */
+        2:  314:    new_array[idx].name = copied_name;
+        -:  315:
+        2:  316:    r->treasures = new_array;
+        2:  317:    r->treasure_count = new_count;
+        -:  318:
+        2:  319:    return OK;
+        -:  320:}
+        -:  321:
+        -:  322:/*
+        -:  323: * Check if a treasure exists at a given position.
+        -:  324: *
+        -:  325: * Returns:
+        -:  326: *   treasure ID if found
+        -:  327: *   -1 if no treasure exists or room is NULL
+        -:  328: */
+function room_get_treasure_at called 18 returned 100% blocks executed 100%
+       18:  329:int room_get_treasure_at(const Room *r, int x, int y) {
+       18:  330:    if (r == NULL) {
+branch  0 taken 1 (fallthrough)
+branch  1 taken 17
+        1:  331:        return -1;
+        -:  332:    }
+        -:  333:
+        -:  334:    /* Linear search through treasures */
+       63:  335:    for (int i = 0; i < r->treasure_count; i++) {
+branch  0 taken 49
+branch  1 taken 14 (fallthrough)
+       49:  336:        if (r->treasures[i].x == x && 
+branch  0 taken 10 (fallthrough)
+branch  1 taken 39
+       10:  337:            r->treasures[i].y == y && 
+branch  0 taken 3 (fallthrough)
+branch  1 taken 7
+        3:  338:            !r->treasures[i].collected) {
+branch  0 taken 3 (fallthrough)
+branch  1 taken 0
+        3:  339:            return r->treasures[i].id;
+        -:  340:        }
+        -:  341:    }
+        -:  342:
+       14:  343:    return -1;  //failed if no treasure found
+        -:  344:}
+        -:  345:
+        -:  346:
+        -:  347:/* ============================================================
+        -:  348: * Portals
+        -:  349: * ============================================================ */
+        -:  350:
+        -:  351:/*
+        -:  352: * Check if a portal exists at (x,y).
+        -:  353: *
+        -:  354: * Returns:
+        -:  355: *   destination room ID if found
+        -:  356: *   -1 if no portal exists or room is NULL
+        -:  357: */
+function room_get_portal_destination called 12 returned 100% blocks executed 100%
+       12:  358:int room_get_portal_destination(const Room *r, int x, int y) {
+       12:  359:    if (r == NULL) {
+branch  0 taken 1 (fallthrough)
+branch  1 taken 11
+        1:  360:        return -1;
+        -:  361:    }
+        -:  362:
+        -:  363:    /* Linear search through portals */
+       38:  364:    for (int i = 0; i < r->portal_count; i++) {
+branch  0 taken 29
+branch  1 taken 9 (fallthrough)
+       29:  365:        if (r->portals[i].x == x && r->portals[i].y == y) {//if coordinates match
+branch  0 taken 2 (fallthrough)
+branch  1 taken 27
+branch  2 taken 2 (fallthrough)
+branch  3 taken 0
+        2:  366:            return r->portals[i].target_room_id;//return destination room ID
+        -:  367:        }
+        -:  368:    }
+        -:  369:
+        9:  370:    return -1; //not right location
+        -:  371:}
+        -:  372:
+        -:  373:
+        -:  374:/* ============================================================
+        -:  375: * Walkability
+        -:  376: * ============================================================ */
+        -:  377:
+        -:  378: /*
+        -:  379: * Determine whether a tile is walkable.
+        -:  380: *
+        -:  381: * A tile is not walkable if:
+        -:  382: *   • Out of bounds
+        -:  383: *   • Wall (including interior walls)
+        -:  384: *
+        -:  385: * Returns:
+        -:  386: *   true if walkable
+        -:  387: *   false otherwise or if room is NULL
+        -:  388: */
+function room_is_walkable called 1029 returned 100% blocks executed 78%
+     1029:  389:bool room_is_walkable(const Room *r, int x, int y) {
+     1029:  390:    if (r == NULL) {
+branch  0 taken 1 (fallthrough)
+branch  1 taken 1028
+        1:  391:        return false;
+        -:  392:    }
+        -:  393:
+        -:  394:     //check 0-upper bound defined by width/height
+     1028:  395:    if (x < 0 || x >= r->width || y < 0 || y >= r->height) {
+branch  0 taken 1026 (fallthrough)
+branch  1 taken 2
+branch  2 taken 1025 (fallthrough)
+branch  3 taken 1
+branch  4 taken 1025 (fallthrough)
+branch  5 taken 0
+branch  6 taken 0 (fallthrough)
+branch  7 taken 1025
+        3:  396:        return false;
+        -:  397:    }
+        -:  398:
+        -:  399:    
+        -:  400:    //if floor grid is null just create square with upper bounds as walls
+     1025:  401:    if (r->floor_grid == NULL) {
+branch  0 taken 5 (fallthrough)
+branch  1 taken 1020
+        3:  402:        bool is_perimeter = (x == 0 || x == r->width - 1 || 
+branch  0 taken 2 (fallthrough)
+branch  1 taken 1
+branch  2 taken 2 (fallthrough)
+branch  3 taken 0
+        8:  403:                            y == 0 || y == r->height - 1);
+branch  0 taken 3 (fallthrough)
+branch  1 taken 2
+branch  2 taken 0 (fallthrough)
+branch  3 taken 2
+        5:  404:        if (is_perimeter) {
+branch  0 taken 3 (fallthrough)
+branch  1 taken 2
+        3:  405:            return false;
+        -:  406:        }
+        -:  407:    } else {
+        -:  408:        //2D grid stored as 1D array: index = y * width + x
+        -:  409:        //true = floor (walkable), false = wall (not walkable)
+     1020:  410:        int index = y * r->width + x;
+     1020:  411:        if (!r->floor_grid[index]) {
+branch  0 taken 346 (fallthrough)
+branch  1 taken 674
+      346:  412:            return false;
+        -:  413:        }
+        -:  414:    }
+        -:  415:    
+        -:  416:    // A2: Check for pushables (they block movement)
+      676:  417:    if (r->pushables != NULL) {
+branch  0 taken 0 (fallthrough)
+branch  1 taken 676
+    #####:  418:        for (int i = 0; i < r->pushable_count; i++) {
+branch  0 never executed
+branch  1 never executed (fallthrough)
+    #####:  419:            if (r->pushables[i].x == x && r->pushables[i].y == y) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+branch  2 never executed (fallthrough)
+branch  3 never executed
+    #####:  420:                return false;  // Pushable blocks this tile
+        -:  421:            }
+        -:  422:        }
+        -:  423:    }
+        -:  424:
+      676:  425:    return true;
+        -:  426:}
+        -:  427:
+        -:  428:
+        -:  429:/* ============================================================
+        -:  430: * Tile Classification
+        -:  431: * ============================================================ */
+        -:  432:
+        -:  433: /*
+        -:  434: * Classify a tile and optionally return an associated ID.
+        -:  435: *
+        -:  436: * If out_id is non-NULL and the tile contains:
+        -:  437: *   • treasure: out_id receives treasure ID
+        -:  438: *   • portal: out_id receives destination room ID
+        -:  439: *
+        -:  440: * Returns:
+        -:  441: *   ROOM_TILE_INVALID for out-of-bounds or if room is NULL
+        -:  442: *   ROOM_TILE_WALL for walls
+        -:  443: *   ROOM_TILE_FLOOR for empty walkable tiles
+        -:  444: *   ROOM_TILE_TREASURE or ROOM_TILE_PORTAL as appropriate
+        -:  445: */
+function room_classify_tile called 5 returned 100% blocks executed 71%
+        5:  446:RoomTileType room_classify_tile(const Room *r, int x, int y, int *out_id) {
+        5:  447:    if (r == NULL) {
+branch  0 taken 0 (fallthrough)
+branch  1 taken 5
+    #####:  448:        return ROOM_TILE_INVALID;
+        -:  449:    }
+        -:  450:
+        -:  451:    /* Check bounds */
+        5:  452:    if (x < 0 || x >= r->width || y < 0 || y >= r->height) {
+branch  0 taken 4 (fallthrough)
+branch  1 taken 1
+branch  2 taken 4 (fallthrough)
+branch  3 taken 0
+branch  4 taken 4 (fallthrough)
+branch  5 taken 0
+branch  6 taken 0 (fallthrough)
+branch  7 taken 4
+        1:  453:        return ROOM_TILE_INVALID;
+        -:  454:    }
+        -:  455:
+        -:  456:    /* Priority order (overlapping entities):
+        -:  457:     * 1. Treasure (most visible)
+        -:  458:     * 2. Portal
+        -:  459:     * 3. Pushable (A2)
+        -:  460:     * 4. Floor
+        -:  461:     * 5. Wall
+        -:  462:     */
+        -:  463:
+        -:  464:    /* Check for treasure (only non-collected) */
+        4:  465:    int treasure_id = room_get_treasure_at(r, x, y);
+call    0 returned 4
+        4:  466:    if (treasure_id >= 0) {
+branch  0 taken 1 (fallthrough)
+branch  1 taken 3
+        1:  467:        if (out_id != NULL) {
+branch  0 taken 1 (fallthrough)
+branch  1 taken 0
+        1:  468:            *out_id = treasure_id;
+        -:  469:        }
+        1:  470:        return ROOM_TILE_TREASURE;
+        -:  471:    }
+        -:  472:
+        -:  473:    /* Check for portal */
+        3:  474:    int portal_dest = room_get_portal_destination(r, x, y);
+call    0 returned 3
+        3:  475:    if (portal_dest >= 0) {
+branch  0 taken 1 (fallthrough)
+branch  1 taken 2
+        1:  476:        if (out_id != NULL) {
+branch  0 taken 1 (fallthrough)
+branch  1 taken 0
+        1:  477:            *out_id = portal_dest;
+        -:  478:        }
+        1:  479:        return ROOM_TILE_PORTAL;
+        -:  480:    }
+        -:  481:    
+        -:  482:    /* A2: Check for pushable */
+        2:  483:    if (r->pushables != NULL) {
+branch  0 taken 0 (fallthrough)
+branch  1 taken 2
+    #####:  484:        for (int i = 0; i < r->pushable_count; i++) {
+branch  0 never executed
+branch  1 never executed (fallthrough)
+    #####:  485:            if (r->pushables[i].x == x && r->pushables[i].y == y) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+branch  2 never executed (fallthrough)
+branch  3 never executed
+    #####:  486:                if (out_id != NULL) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  487:                    *out_id = i;  // Return pushable index
+        -:  488:                }
+    #####:  489:                return ROOM_TILE_PUSHABLE;
+        -:  490:            }
+        -:  491:        }
+        -:  492:    }
+        -:  493:
+        -:  494:    /* Check if walkable (floor vs wall) */
+        2:  495:    if (room_is_walkable(r, x, y)) {
+call    0 returned 2
+branch  1 taken 1 (fallthrough)
+branch  2 taken 1
+        1:  496:        return ROOM_TILE_FLOOR;
+        -:  497:    }
+        -:  498:
+        1:  499:    return ROOM_TILE_WALL;
+        -:  500:}
+        -:  501:
+        -:  502:
+        -:  503:/* ============================================================
+        -:  504: * Rendering
+        -:  505: * ============================================================ */
+        -:  506:
+function room_render_in_bounds called 33 returned 100% blocks executed 88%
+       33:  507:static bool room_render_in_bounds(const Room *r, int x, int y) {
+      33*:  508:    return x >= 0 && x < r->width && y >= 0 && y < r->height;
+branch  0 taken 33 (fallthrough)
+branch  1 taken 0
+branch  2 taken 33 (fallthrough)
+branch  3 taken 0
+branch  4 taken 33 (fallthrough)
+branch  5 taken 0
+branch  6 taken 33 (fallthrough)
+branch  7 taken 0
+        -:  509:}
+        -:  510:
+function room_render_base_layer called 6 returned 100% blocks executed 100%
+        6:  511:static void room_render_base_layer(const Room *r, const Charset *charset, char *buffer) {
+       64:  512:    for (int row = 0; row < r->height; row++) {
+branch  0 taken 58
+branch  1 taken 6 (fallthrough)
+     1064:  513:        for (int col = 0; col < r->width; col++) {
+branch  0 taken 1006
+branch  1 taken 58 (fallthrough)
+     1006:  514:            int index = row * r->width + col;
+     1006:  515:            char base_tile = (char)charset->wall;
+     1006:  516:            if (room_is_walkable(r, col, row)) {
+call    0 returned 1006
+branch  1 taken 666 (fallthrough)
+branch  2 taken 340
+      666:  517:                base_tile = (char)charset->floor;
+        -:  518:            }
+     1006:  519:            buffer[index] = base_tile;
+        -:  520:        }
+        -:  521:    }
+        6:  522:}
+        -:  523:
+function room_render_treasures called 6 returned 100% blocks executed 80%
+        6:  524:static void room_render_treasures(const Room *r, const Charset *charset, char *buffer) {
+       23:  525:    for (int i = 0; i < r->treasure_count; i++) {
+branch  0 taken 17
+branch  1 taken 6 (fallthrough)
+      17*:  526:        if (r->treasures[i].collected) {
+branch  0 taken 0 (fallthrough)
+branch  1 taken 17
+    #####:  527:            continue;
+        -:  528:        }
+        -:  529:
+       17:  530:        int x = r->treasures[i].x;
+       17:  531:        int y = r->treasures[i].y;
+      17*:  532:        if (!room_render_in_bounds(r, x, y)) {
+call    0 returned 17
+branch  1 taken 0 (fallthrough)
+branch  2 taken 17
+    #####:  533:            continue;
+        -:  534:        }
+        -:  535:
+       17:  536:        buffer[y * r->width + x] = charset->treasure;
+        -:  537:    }
+        6:  538:}
+        -:  539:
+function room_render_portals called 6 returned 100% blocks executed 88%
+        6:  540:static void room_render_portals(const Room *r, const Charset *charset, char *buffer) {
+       22:  541:    for (int i = 0; i < r->portal_count; i++) {
+branch  0 taken 16
+branch  1 taken 6 (fallthrough)
+       16:  542:        int x = r->portals[i].x;
+       16:  543:        int y = r->portals[i].y;
+      16*:  544:        if (!room_render_in_bounds(r, x, y)) {
+call    0 returned 16
+branch  1 taken 0 (fallthrough)
+branch  2 taken 16
+    #####:  545:            continue;
+        -:  546:        }
+        -:  547:
+       16:  548:        buffer[y * r->width + x] = charset->portal;
+        -:  549:    }
+        6:  550:}
+        -:  551:
+function room_render_pushables called 6 returned 100% blocks executed 30%
+        6:  552:static void room_render_pushables(const Room *r, const Charset *charset, char *buffer) {
+        6:  553:    if (r->pushables == NULL) {
+branch  0 taken 6 (fallthrough)
+branch  1 taken 0
+        6:  554:        return;
+        -:  555:    }
+        -:  556:
+    #####:  557:    for (int i = 0; i < r->pushable_count; i++) {
+branch  0 never executed
+branch  1 never executed (fallthrough)
+    #####:  558:        int x = r->pushables[i].x;
+    #####:  559:        int y = r->pushables[i].y;
+    #####:  560:        if (!room_render_in_bounds(r, x, y)) {
+call    0 never executed
+branch  1 never executed (fallthrough)
+branch  2 never executed
+    #####:  561:            continue;
+        -:  562:        }
+        -:  563:
+    #####:  564:        buffer[y * r->width + x] = charset->pushable;
+        -:  565:    }
+        -:  566:}
+        -:  567:
+        -:  568:/* Parameters:
+        -:  569: *   r:
+        -:  570: *     The room to render.
+        -:  571: *   charset:
+        -:  572: *     Character set for rendering.
+        -:  573: *   buffer:
+        -:  574: *     Pre-allocated buffer of exactly width * height bytes (no linefeeds).
+        -:  575: *   buffer_width, buffer_height:
+        -:  576: *     Must match room dimensions.
+        -:  577: *
+        -:  578: * Returns:
+        -:  579: *   OK on success
+        -:  580: *   INVALID_ARGUMENT if room, charset, or buffer is NULL
+        -:  581: *   INVALID_ARGUMENT if buffer dimensions don't match room dimensions
+        -:  582: */
+        -:  583:
+function room_render called 7 returned 100% blocks executed 92%
+        7:  584:Status room_render(const Room *r, const Charset *charset, char *buffer,
+        -:  585:                   int buffer_width, int buffer_height) {
+        7:  586:    if (r == NULL || charset == NULL || buffer == NULL) {
+branch  0 taken 6 (fallthrough)
+branch  1 taken 1
+branch  2 taken 6 (fallthrough)
+branch  3 taken 0
+branch  4 taken 0 (fallthrough)
+branch  5 taken 6
+        1:  587:        return INVALID_ARGUMENT;
+        -:  588:    }
+        -:  589:
+        6:  590:    if (buffer_width != r->width || buffer_height != r->height) {
+branch  0 taken 6 (fallthrough)
+branch  1 taken 0
+branch  2 taken 0 (fallthrough)
+branch  3 taken 6
+    #####:  591:        return INVALID_ARGUMENT;
+        -:  592:    }
+        -:  593:
+        6:  594:    room_render_base_layer(r, charset, buffer);
+call    0 returned 6
+        6:  595:    room_render_treasures(r, charset, buffer);
+call    0 returned 6
+        6:  596:    room_render_portals(r, charset, buffer);
+call    0 returned 6
+        6:  597:    room_render_pushables(r, charset, buffer);
+call    0 returned 6
+        -:  598:
+        6:  599:    return OK;
+        -:  600:}
+        -:  601:
+        -:  602:
+        -:  603:/* ============================================================
+        -:  604: * Entry Position
+        -:  605: * ============================================================ */
+        -:  606:
+        -:  607:/*
+        -:  608: * Determine a valid starting position in the room.
+        -:  609: *
+        -:  610: * Preference:
+        -:  611: *   1. First portal location
+        -:  612: *   2. Any interior walkable tile
+        -:  613: *
+        -:  614: * Returns:
+        -:  615: *   OK on success (x_out and y_out are set)
+        -:  616: *   INVALID_ARGUMENT if room or output pointers are NULL
+        -:  617: *   ROOM_NOT_FOUND if no valid starting position exists
+        -:  618: */
+function room_get_start_position called 22 returned 100% blocks executed 82%
+       22:  619:Status room_get_start_position(const Room *r, int *x_out, int *y_out) {
+       22:  620:    if (r == NULL || x_out == NULL || y_out == NULL) {
+branch  0 taken 21 (fallthrough)
+branch  1 taken 1
+branch  2 taken 21 (fallthrough)
+branch  3 taken 0
+branch  4 taken 0 (fallthrough)
+branch  5 taken 21
+        1:  621:        return INVALID_ARGUMENT;
+        -:  622:    }
+        -:  623:
+        -:  624:    /* PREFERENCE 1: First portal location */
+       21:  625:    if (r->portal_count > 0) {
+branch  0 taken 20 (fallthrough)
+branch  1 taken 1
+       20:  626:        *x_out = r->portals[0].x;
+       20:  627:        *y_out = r->portals[0].y;
+       20:  628:        return OK;
+        -:  629:    }
+        -:  630:
+        -:  631:    /* PREFERENCE 2: Any interior walkable tile
+        -:  632:     * 
+        -:  633:     * Scan the room for a walkable tile
+        -:  634:     * Start from (1, 1) to avoid perimeter
+        -:  635:     */
+       1*:  636:    for (int row = 1; row < r->height - 1; row++) {
+branch  0 taken 1
+branch  1 taken 0 (fallthrough)
+       1*:  637:        for (int col = 1; col < r->width - 1; col++) {
+branch  0 taken 1
+branch  1 taken 0 (fallthrough)
+        1:  638:            if (room_is_walkable(r, col, row)) {
+call    0 returned 1
+branch  1 taken 1 (fallthrough)
+branch  2 taken 0
+        1:  639:                *x_out = col;
+        1:  640:                *y_out = row;
+        1:  641:                return OK;
+        -:  642:            }
+        -:  643:        }
+        -:  644:    }
+        -:  645:
+        -:  646:    /* No valid position found - shouldn't happen in well-formed rooms */
+    #####:  647:    return ROOM_NOT_FOUND;
+        -:  648:}
+        -:  649:
+        -:  650:
+        -:  651:/* ============================================================
+        -:  652: * Destruction & Debugging
+        -:  653: * ============================================================ */
+        -:  654:
+        -:  655:/*
+        -:  656: * Free all memory owned by the room.
+        -:  657: *
+        -:  658: * Must be safe to call on NULL.
+        -:  659: */
+function room_destroy called 92 returned 100% blocks executed 79%
+       92:  660:void room_destroy(Room *r) {
+       92:  661:    if (r == NULL) {
+branch  0 taken 1 (fallthrough)
+branch  1 taken 91
+        1:  662:        return;  /* Safe to destroy NULL */
+        -:  663:    }
+        -:  664:
+        -:  665:    
+       91:  666:    free(r->name);
+       91:  667:    free(r->floor_grid);
+        -:  668:
+        -:  669:    /* Free portals array
+        -:  670:     * 
+        -:  671:     * Each portal has a name string that needs freeing too!
+        -:  672:     * This is a common pattern: array of structs with strings inside
+        -:  673:     */
+        -:  674:     //
+       91:  675:    if (r->portals != NULL) {
+branch  0 taken 76 (fallthrough)
+branch  1 taken 15
+      297:  676:        for (int i = 0; i < r->portal_count; i++) {
+branch  0 taken 221
+branch  1 taken 76 (fallthrough)
+      221:  677:            free(r->portals[i].name);  /* Free each portal's name */
+        -:  678:        }
+       76:  679:        free(r->portals);  /* Free the array itself */
+        -:  680:    }
+        -:  681:
+        -:  682:    //Free treasures array (same pattern) 
+       91:  683:    if (r->treasures != NULL) {
+branch  0 taken 77 (fallthrough)
+branch  1 taken 14
+      372:  684:        for (int i = 0; i < r->treasure_count; i++) {
+branch  0 taken 295
+branch  1 taken 77 (fallthrough)
+      295:  685:            free(r->treasures[i].name);  /* Free each treasure's name */
+        -:  686:        }
+       77:  687:        free(r->treasures);  /* Free the array itself */
+        -:  688:    }
+        -:  689:    
+        -:  690:    // A2: Free pushables array
+       91:  691:    if (r->pushables != NULL) {
+branch  0 taken 0 (fallthrough)
+branch  1 taken 91
+    #####:  692:        for (int i = 0; i < r->pushable_count; i++) {
+branch  0 never executed
+branch  1 never executed (fallthrough)
+    #####:  693:            free(r->pushables[i].name);  /* Free each pushable's name */
+        -:  694:        }
+    #####:  695:        free(r->pushables);  /* Free the array itself */
+        -:  696:    }
+        -:  697:    
+        -:  698:    // A2: Free switches array (no strings to free)
+       91:  699:    free(r->switches);
+        -:  700:
+        -:  701:    //free room struct
+       91:  702:    free(r);
+        -:  703:}
+        -:  704:
+        -:  705:
+        -:  706:/* ============================================================
+        -:  707: * A2: NEW ROOM FUNCTIONS
+        -:  708: * ============================================================ */
+        -:  709:
+        -:  710:/*
+        -:  711: * Retrieve the Unique room ID.
+        -:  712: *
+        -:  713: * Returns:
+        -:  714: *   ID on success
+        -:  715: *   -1 if r is NULL
+        -:  716: */
+function room_get_id called 0 returned 0% blocks executed 0%
+    #####:  717:int room_get_id(const Room *r) {
+    #####:  718:    if (r == NULL) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  719:        return -1;
+        -:  720:    }
+    #####:  721:    return r->id;
+        -:  722:}
+        -:  723:
+        -:  724:/*
+        -:  725: * Remove a treasure from the room by ID.
+        -:  726: *
+        -:  727: * Parameters:
+        -:  728: *   treasure_out: receives a pointer to the room-owned Treasure on success
+        -:  729: *
+        -:  730: * Returns:
+        -:  731: *   OK on success (treasure_out is set)
+        -:  732: *   INVALID_ARGUMENT if r or treasure_out is NULL, or treasure already collected
+        -:  733: *   ROOM_NOT_FOUND if treasure_id does not exist in the room
+        -:  734: */
+function room_pick_up_treasure called 0 returned 0% blocks executed 0%
+    #####:  735:Status room_pick_up_treasure(Room *r, int treasure_id, Treasure **treasure_out) {
+    #####:  736:    if (r == NULL || treasure_out == NULL) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+branch  2 never executed (fallthrough)
+branch  3 never executed
+    #####:  737:        return INVALID_ARGUMENT;
+        -:  738:    }
+        -:  739:    
+        -:  740:    // Find the treasure by ID
+    #####:  741:    for (int i = 0; i < r->treasure_count; i++) {
+branch  0 never executed
+branch  1 never executed (fallthrough)
+    #####:  742:        if (r->treasures[i].id == treasure_id) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+        -:  743:            // Check if already collected
+    #####:  744:            if (r->treasures[i].collected) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  745:                return INVALID_ARGUMENT;
+        -:  746:            }
+        -:  747:            
+        -:  748:            // Mark as collected
+    #####:  749:            r->treasures[i].collected = true;
+    #####:  750:            *treasure_out = &r->treasures[i];
+    #####:  751:            return OK;
+        -:  752:        }
+        -:  753:    }
+        -:  754:    
+    #####:  755:    return ROOM_NOT_FOUND;
+        -:  756:}
+        -:  757:
+        -:  758:/*
+        -:  759: * Free a heap-allocated Treasure.
+        -:  760: */
+function destroy_treasure called 0 returned 0% blocks executed 0%
+    #####:  761:void destroy_treasure(Treasure *t) {
+    #####:  762:    if (t == NULL) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  763:        return;
+        -:  764:    }
+    #####:  765:    free(t->name);
+    #####:  766:    free(t);
+        -:  767:}
+        -:  768:
+        -:  769:/*
+        -:  770: * Check whether a pushable exists at (x,y).
+        -:  771: *
+        -:  772: * Returns:
+        -:  773: *   true if a pushable exists at the specified coordinates
+        -:  774: *   false if it does not, or on invalid arguments
+        -:  775: *
+        -:  776: * Postconditions:
+        -:  777: *   If pushable_idx_out is non-NULL, it receives the pushable index.
+        -:  778: */
+function room_has_pushable_at called 10 returned 100% blocks executed 29%
+       10:  779:bool room_has_pushable_at(const Room *r, int x, int y, int *pushable_idx_out) {
+       10:  780:    if (r == NULL) {
+branch  0 taken 0 (fallthrough)
+branch  1 taken 10
+    #####:  781:        return false;
+        -:  782:    }
+        -:  783:    
+       10:  784:    if (r->pushables == NULL) {
+branch  0 taken 10 (fallthrough)
+branch  1 taken 0
+       10:  785:        return false;
+        -:  786:    }
+        -:  787:    
+    #####:  788:    for (int i = 0; i < r->pushable_count; i++) {
+branch  0 never executed
+branch  1 never executed (fallthrough)
+    #####:  789:        if (r->pushables[i].x == x && r->pushables[i].y == y) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+branch  2 never executed (fallthrough)
+branch  3 never executed
+    #####:  790:            if (pushable_idx_out != NULL) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  791:                *pushable_idx_out = i;
+        -:  792:            }
+    #####:  793:            return true;
+        -:  794:        }
+        -:  795:    }
+        -:  796:    
+    #####:  797:    return false;
+        -:  798:}
+        -:  799:
+        -:  800:/*
+        -:  801: * Attempt to push a pushable in the given direction.
+        -:  802: *
+        -:  803: * Returns:
+        -:  804: *   OK on success
+        -:  805: *   ROOM_IMPASSABLE if blocked
+        -:  806: *   INVALID_ARGUMENT if arguments are invalid
+        -:  807: */
+function room_try_push called 0 returned 0% blocks executed 0%
+    #####:  808:Status room_try_push(Room *r, int pushable_idx, Direction dir) {
+    #####:  809:    if (r == NULL) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  810:        return INVALID_ARGUMENT;
+        -:  811:    }
+        -:  812:    
+    #####:  813:    if (pushable_idx < 0 || pushable_idx >= r->pushable_count) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+branch  2 never executed (fallthrough)
+branch  3 never executed
+    #####:  814:        return INVALID_ARGUMENT;
+        -:  815:    }
+        -:  816:    
+        -:  817:    // Calculate target position based on direction
+    #####:  818:    int current_x = r->pushables[pushable_idx].x;
+    #####:  819:    int current_y = r->pushables[pushable_idx].y;
+    #####:  820:    int target_x = current_x;
+    #####:  821:    int target_y = current_y;
+        -:  822:    
+    #####:  823:    switch (dir) {
+branch  0 never executed
+branch  1 never executed
+branch  2 never executed
+branch  3 never executed
+branch  4 never executed
+    #####:  824:        case DIR_NORTH:
+    #####:  825:            target_y--;
+    #####:  826:            break;
+    #####:  827:        case DIR_SOUTH:
+    #####:  828:            target_y++;
+    #####:  829:            break;
+    #####:  830:        case DIR_EAST:
+    #####:  831:            target_x++;
+    #####:  832:            break;
+    #####:  833:        case DIR_WEST:
+    #####:  834:            target_x--;
+    #####:  835:            break;
+    #####:  836:        default:
+    #####:  837:            return INVALID_ARGUMENT;
+        -:  838:    }
+        -:  839:    
+        -:  840:    // Check if target position is walkable
+        -:  841:    // Note: room_is_walkable checks for other pushables, so we need to 
+        -:  842:    // temporarily ignore the current pushable's position
+    #####:  843:    if (!room_is_walkable(r, target_x, target_y)) {
+call    0 never executed
+branch  1 never executed (fallthrough)
+branch  2 never executed
+    #####:  844:        return ROOM_IMPASSABLE;
+        -:  845:    }
+        -:  846:
+    #####:  847:    if (room_get_portal_destination(r, target_x, target_y) >= 0) {
+call    0 never executed
+branch  1 never executed (fallthrough)
+branch  2 never executed
+    #####:  848:        return ROOM_IMPASSABLE;
+        -:  849:    }
+        -:  850:
+    #####:  851:    if (room_get_treasure_at(r, target_x, target_y) >= 0) {
+call    0 never executed
+branch  1 never executed (fallthrough)
+branch  2 never executed
+    #####:  852:        return ROOM_IMPASSABLE;
+        -:  853:    }
+        -:  854:    
+        -:  855:    // Move the pushable
+    #####:  856:    r->pushables[pushable_idx].x = target_x;
+    #####:  857:    r->pushables[pushable_idx].y = target_y;
+        -:  858:    
+    #####:  859:    return OK;
+        -:  860:}

@@ -1,0 +1,332 @@
+        -:    0:Source:src/player.c
+        -:    0:Graph:coverage_build/player.gcno
+        -:    0:Data:coverage_build/player.gcda
+        -:    0:Runs:74
+        -:    1:#include "player.h"
+        -:    2:#include <stdlib.h>
+        -:    3:
+        -:    4:/* ============================================================
+        -:    5: * PLAYER MODULE IMPLEMENTATION
+        -:    6: *
+        -:    7: * The Player struct tracks:
+        -:    8: *   - Which room the player is in (room_ID)
+        -:    9: *   - Where in that room (x, y coordinates)
+        -:   10:
+        -:   11: * The Player module provides functions to:
+        -:   12: *   - Create and destroy Player instances
+        -:   13: *   - Get and set position
+        -:   14: *   - Move between rooms
+        -:   15: *   - Reset to start position
+        -:   16: * ============================================================ */
+        -:   17:
+        -:   18:
+        -:   19:
+        -:   20:/*
+        -:   21: * Create a new player at the given room and position.
+        -:   22: *
+        -:   23: * Preconditions:
+        -:   24: *   player_out must not be NULL.
+        -:   25: *
+        -:   26: * Returns:
+        -:   27: *   OK on success (player_out set)
+        -:   28: *   INVALID_ARGUMENT if player_out is NULL
+        -:   29: *   NO_MEMORY on allocation failure
+        -:   30: */
+function player_create called 24 returned 100% blocks executed 83%
+       24:   31:Status player_create(int initial_room_id, int initial_x, int initial_y, Player **player_out) {
+        -:   32:    // Precondition check
+       24:   33:    if (player_out == NULL) {
+branch  0 taken 1 (fallthrough)
+branch  1 taken 23
+        1:   34:        return INVALID_ARGUMENT;
+        -:   35:    }
+        -:   36:
+        -:   37:    // malloc returns NULL if allocation fails (out of memory) -> NO_MEMORY error
+       23:   38:    Player *p = malloc(sizeof(Player));
+       23:   39:    if (p == NULL) {
+branch  0 taken 0 (fallthrough)
+branch  1 taken 23
+    #####:   40:        return NO_MEMORY;
+        -:   41:    }
+        -:   42:
+        -:   43:    //initialize struct fields
+       23:   44:    p->room_id = initial_room_id;
+       23:   45:    p->x = initial_x;
+       23:   46:    p->y = initial_y;
+        -:   47:    
+        -:   48:    // A2: Initialize treasure collection
+       23:   49:    p->collected_treasures = NULL;
+       23:   50:    p->collected_count = 0;
+        -:   51:
+        -:   52:    //new player created successfully
+       23:   53:    *player_out = p;
+       23:   54:    return OK;
+        -:   55:}
+        -:   56:
+        -:   57:/*
+        -:   58: * Destroy the player and free all owned memory.
+        -:   59: *
+        -:   60: * Must be safe to call on NULL.
+        -:   61: */
+function player_destroy called 24 returned 100% blocks executed 100%
+       24:   62:void player_destroy(Player *p) {
+        -:   63:    // Safe to call on NULL -> p doesnt exist, nothing to free
+       24:   64:    if (p == NULL) {
+branch  0 taken 1 (fallthrough)
+branch  1 taken 23
+        1:   65:        return;
+        -:   66:    }
+        -:   67:
+        -:   68:    // A2: Free the collected_treasures array (NOT the treasures themselves - rooms own those)
+       23:   69:    free(p->collected_treasures);
+        -:   70:
+        -:   71:    //Free the Player struct itself
+       23:   72:    free(p);
+        -:   73:}
+        -:   74:
+        -:   75:/*
+        -:   76: * Get the ID of the room the player is currently in.
+        -:   77: *
+        -:   78: * Returns:
+        -:   79: *   Room ID on success
+        -:   80: *   -1 if p is NULL
+        -:   81: */
+function player_get_room called 22 returned 100% blocks executed 100%
+       22:   82:int player_get_room(const Player *p) {
+        -:   83:   //No player provided
+       22:   84:    if (p == NULL) {
+branch  0 taken 1 (fallthrough)
+branch  1 taken 21
+        1:   85:        return -1;
+        -:   86:    }
+        -:   87:
+       21:   88:    return p->room_id;
+        -:   89:}
+        -:   90:
+        -:   91:/*
+        -:   92: * Get the player's current position.
+        -:   93: *
+        -:   94: * Returns:
+        -:   95: *   OK on success (x_out and y_out are set)
+        -:   96: *   INVALID_ARGUMENT if any pointer is NULL
+        -:   97: */
+function player_get_position called 26 returned 100% blocks executed 100%
+       26:   98:Status player_get_position(const Player *p, int *x_out, int *y_out) {
+       26:   99:    if (p == NULL || x_out == NULL || y_out == NULL) {
+branch  0 taken 25 (fallthrough)
+branch  1 taken 1
+branch  2 taken 24 (fallthrough)
+branch  3 taken 1
+branch  4 taken 0 (fallthrough)
+branch  5 taken 24
+        2:  100:        return INVALID_ARGUMENT;
+        -:  101:    }
+        -:  102:
+       24:  103:    *x_out = p->x;
+       24:  104:    *y_out = p->y;
+        -:  105:    
+       24:  106:    return OK;
+        -:  107:}
+        -:  108:
+        -:  109:/*
+        -:  110: * Set the player's position within the current room (no validation).
+        -:  111: *
+        -:  112: * Returns:
+        -:  113: *   OK on success
+        -:  114: *   INVALID_ARGUMENT if player is NULL
+        -:  115: */
+function player_set_position called 8 returned 100% blocks executed 100%
+        8:  116:Status player_set_position(Player *p, int x, int y) {
+        -:  117:    //player validation
+        8:  118:    if (p == NULL) {
+branch  0 taken 1 (fallthrough)
+branch  1 taken 7
+        1:  119:        return INVALID_ARGUMENT;
+        -:  120:    }
+        -:  121:
+        7:  122:    p->x = x;
+        7:  123:    p->y = y;
+        -:  124:    
+        7:  125:    return OK;
+        -:  126:}
+        -:  127:
+        -:  128:/*
+        -:  129: * Transition the player to a different room (position unchanged).
+        -:  130: *
+        -:  131: * Returns:
+        -:  132: *   OK on success
+        -:  133: *   INVALID_ARGUMENT if player is NULL
+        -:  134: */
+function player_move_to_room called 1 returned 100% blocks executed 75%
+        1:  135:Status player_move_to_room(Player *p, int new_room_id) {
+        -:  136:    //Change the room ID, but keep x/y the same
+        1:  137:    if (p == NULL) {
+branch  0 taken 0 (fallthrough)
+branch  1 taken 1
+    #####:  138:        return INVALID_ARGUMENT;
+        -:  139:    }
+        -:  140:
+        1:  141:    p->room_id = new_room_id;
+        1:  142:    return OK;
+        -:  143:}
+        -:  144:
+        -:  145:/*
+        -:  146: * Reset the player to an initial state:
+        -:  147: *   • Resets room ID and position
+        -:  148: *
+        -:  149: * Returns:
+        -:  150: *   OK on success
+        -:  151: *   INVALID_ARGUMENT if player is NULL
+        -:  152: */
+function player_reset_to_start called 1 returned 100% blocks executed 75%
+        1:  153:Status player_reset_to_start(Player *p, int starting_room_id, int start_x, int start_y) {
+        1:  154:    if (p == NULL) {
+branch  0 taken 0 (fallthrough)
+branch  1 taken 1
+    #####:  155:        return INVALID_ARGUMENT;
+        -:  156:    }
+        -:  157:
+        1:  158:    p->room_id = starting_room_id;
+        1:  159:    p->x = start_x;
+        1:  160:    p->y = start_y;
+        -:  161:    
+        -:  162:    // A2: Clear collected treasures
+        1:  163:    free(p->collected_treasures);
+        1:  164:    p->collected_treasures = NULL;
+        1:  165:    p->collected_count = 0;
+        -:  166:    
+        1:  167:    return OK;
+        -:  168:}
+        -:  169:
+        -:  170:
+        -:  171:/* ============================================================
+        -:  172: * A2: TREASURE COLLECTION FUNCTIONS
+        -:  173: * ============================================================ */
+        -:  174:
+        -:  175:/*
+        -:  176: * Attempt to collect a treasure and borrow its pointer.
+        -:  177: *
+        -:  178: * Preconditions:
+        -:  179: *   p and treasure are not NULL
+        -:  180: *   treasure has not been collected: treasure->collected is false
+        -:  181: *
+        -:  182: * Returns:
+        -:  183: *   OK on success
+        -:  184: *   NULL_POINTER if p or treasure is NULL
+        -:  185: *   INVALID_ARGUMENT if treasure already collected
+        -:  186: *   NO_MEMORY on allocation failure
+        -:  187: */
+function player_try_collect called 0 returned 0% blocks executed 0%
+    #####:  188:Status player_try_collect(Player *p, Treasure *treasure) {
+    #####:  189:    if (p == NULL || treasure == NULL) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+branch  2 never executed (fallthrough)
+branch  3 never executed
+    #####:  190:        return NULL_POINTER;
+        -:  191:    }
+        -:  192:
+    #####:  193:    for (int i = 0; i < p->collected_count; i++) {
+branch  0 never executed
+branch  1 never executed (fallthrough)
+    #####:  194:        if (p->collected_treasures[i] == treasure ||
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  195:            p->collected_treasures[i]->id == treasure->id) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  196:            return INVALID_ARGUMENT;
+        -:  197:        }
+        -:  198:    }
+        -:  199:    
+        -:  200:    // Expand the collected_treasures array
+    #####:  201:    Treasure **new_array = realloc(p->collected_treasures, 
+    #####:  202:                                   (p->collected_count + 1) * sizeof(Treasure *));
+    #####:  203:    if (new_array == NULL) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  204:        return NO_MEMORY;
+        -:  205:    }
+        -:  206:    
+    #####:  207:    p->collected_treasures = new_array;
+    #####:  208:    p->collected_treasures[p->collected_count] = treasure;
+    #####:  209:    p->collected_count++;
+        -:  210:    
+        -:  211:    // Keep treasure marked as collected for room/player consistency
+    #####:  212:    treasure->collected = true;
+        -:  213:    
+    #####:  214:    return OK;
+        -:  215:}
+        -:  216:
+        -:  217:/*
+        -:  218: * Check whether the player has collected a given treasure ID.
+        -:  219: *
+        -:  220: * Returns:
+        -:  221: *   true if treasure has been collected
+        -:  222: *   false otherwise, or on invalid arguments
+        -:  223: */
+function player_has_collected_treasure called 0 returned 0% blocks executed 0%
+    #####:  224:bool player_has_collected_treasure(const Player *p, int treasure_id) {
+    #####:  225:    if (p == NULL || treasure_id < 0) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+branch  2 never executed (fallthrough)
+branch  3 never executed
+    #####:  226:        return false;
+        -:  227:    }
+        -:  228:    
+    #####:  229:    for (int i = 0; i < p->collected_count; i++) {
+branch  0 never executed
+branch  1 never executed (fallthrough)
+    #####:  230:        if (p->collected_treasures[i]->id == treasure_id) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  231:            return true;
+        -:  232:        }
+        -:  233:    }
+        -:  234:    
+    #####:  235:    return false;
+        -:  236:}
+        -:  237:
+        -:  238:/*
+        -:  239: * Return the number of collected treasures.
+        -:  240: *
+        -:  241: * Returns:
+        -:  242: *   the number of collected treasures
+        -:  243: *   0 if p is NULL
+        -:  244: */
+function player_get_collected_count called 0 returned 0% blocks executed 0%
+    #####:  245:int player_get_collected_count(const Player *p) {
+    #####:  246:    if (p == NULL) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+    #####:  247:        return 0;
+        -:  248:    }
+        -:  249:    
+    #####:  250:    return p->collected_count;
+        -:  251:}
+        -:  252:
+        -:  253:/*
+        -:  254: * Retrieve the array of collected treasures.
+        -:  255: *
+        -:  256: * Returns:
+        -:  257: *   Pointer to internal array of collected treasures (read-only)
+        -:  258: *   NULL if p or count_out is NULL
+        -:  259: *
+        -:  260: * Ownership:
+        -:  261: *   Caller must NOT free or modify returned pointers.
+        -:  262: */
+        -:  263:const Treasure * const *
+function player_get_collected_treasures called 0 returned 0% blocks executed 0%
+    #####:  264:player_get_collected_treasures(const Player *p, int *count_out) {
+    #####:  265:    if (p == NULL || count_out == NULL) {
+branch  0 never executed (fallthrough)
+branch  1 never executed
+branch  2 never executed (fallthrough)
+branch  3 never executed
+    #####:  266:        return NULL;
+        -:  267:    }
+        -:  268:    
+    #####:  269:    *count_out = p->collected_count;
+    #####:  270:    return (const Treasure * const *)p->collected_treasures;
+        -:  271:}

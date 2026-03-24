@@ -1,0 +1,272 @@
+A3: Treasure Run Part Three
+Due: March 27, 23:59 EDT (UTC-5). See course syllabus for late policy.
+Submission: Push to your A3 GitLab repo, main branch.
+Important: Pipelines triggered after the late-submission period deadline will not produce a grade.
+
+Learning Objectives
+While completing this assignment, you will:
+1. Design and integrate new features into an existing multi-language software system.
+2. Implement persistence through structured data serialization (JSON).
+3. Create a user interface using the curses library.
+4. Apply modular design and systematic testing.
+
+The python folder
+Set up your python folder as shown below; treasure_runner, bindings and models will be the same as
+for A2. You will need to add the ui/ module folder, containing the game_ui.py class and the __init__.py
+ﬁle for that module. You will also need to create a run_game.py ﬁle directly int the python directory, as
+shown below.
+python/
+├── run_game.py
+└── treasure_runner/
+├── __init__.py
+├── bindings/
+│
+├── __init__.py
+│
+└── bindings.py
+├── models/
+│
+├── __init__.py
+│
+├── exceptions.py
+│
+├── game_engine.py
+│
+└── player.py
+└── ui/
+├── __init__.py
+└── game_ui.py
+
+GitLab Setup
+• You are responsible for setting up your own A3 repository for this assignment.
+• The repository has already been created but is currently empty.
+• Clone the repository, add ﬁles to it as needed, and commit as normal.
+– The ﬁrst time you push to gitlab: git push -u origin main
+• The repository must follow the same structure as A2 in order for the autograder to run correctly.
+– You may reuse ﬁles from your A2 repository.
+– You will need the same makeﬁles and the same C ﬁles and all of the Python ﬁles.
+– The assets and dist folders will be in the same location
+• Do not copy your .gitlab-ci.yml ﬁle from A2 — the A3 autograder uses a diﬀerent conﬁguration
+and will fail if the A2 version is used.
+– Get a copy of the .gitlab-ci.yml ﬁle for A3 from Moodle.
+– Edit it so that it includes your username.
+1
+
+– Place it at the root of your A3 repository.
+
+Assignment Grading
+For A3, you will be graded primarily on game functionality — how well your game runs, how many features
+it implements, etc. Game functionality will be evaluated during a demo session that replaces the grading
+interviews used in A0–A2. During the demo a TA will run your game while they ask you questions about it.
+The autograder will still run for A3. It will do regression testing using the same tests, linter, coverage
+requirements and memory check as for A2. It will also perform a check of your overall project structure, to
+make sure it is compliant with the MVC design discussed below.
+Make sure existing A2 interfaces still work. Any attempt to “trick” the autograder into awarding a higher
+mark than deserved will result in an assignment grade of zero with no regrade possibility.
+Grade Calculation:
+The grading rubric and expectations for the demo will be released at a later date.
+Grade Allocations
+For A3, you must implement the required features, and you may choose to implement extended features.
+The only way to earn a grade greater than 70 % for A3 is to implement at least one of the extended features.
+You may complete as many extended features as you wish, but we will grade only two. You will tell us during
+the demo which two you want graded.
+• Required Features – 70% of the assignment grade
+• Extended Features – 30% of the assignment grade (two at 15 % each)
+TL;DR: If you complete only the required features, your maximum Assignment 3 mark is 70%.
+In that case, 70% is only possible if you have all required features done correctly and have the
+ability to answer questions correctly. Completing the required features and two extended
+features can raise the grade to a maximum of 100%.
+
+Required Features (70%)
+1. Object-Oriented Python Design (MVC)
+2. Player Proﬁle (Persistence)
+3. Curses User Interface
+4. Game runner
+Object-Oriented Python Design
+Your Python code for A3 must demonstrate object-oriented design and clean modular structure consistent
+with the Model–View–Controller (MVC) pattern introduced in class.
+Ensure that the Python side of your project is a clean Model–View–Controller structure:
+• MVC Model: Player, and any other classes (e.g. Treasure) you choose to implement (Direct wrappers around C functions using ctypes.)
+• MVC Controller: GameEngine (Coordinates model and view, manages ﬂow of the game.)
+• MVC View: GameUI (Handles all rendering, display updates, and user input.)
+• See class discussions in the lectures for more details on the MVC pattern
+Design Expectations
+1. Encapsulation:
+
+2
+
+Each class should expose clear, minimal public methods. Avoid leaking implementation details (e.g.,
+C pointers or ctypes structures) to other layers.
+2. Delegation:
+• Player and GameEngine should call the C functions they logically own, using bindings.lib.
+• GameEngine should not perform rendering or contain curses logic.
+• GameUI should query the GameEngine for state and call rendering functions only.
+3. Clarity and Naming:
+• Choose function and method names that reﬂect their intent, not the C API names. (e.g., use
+move_player() rather than controller_move_player_within_room().)
+• Use Python naming conventions (snake_case for methods and variables, CamelCase for class
+names).
+4. Modularity:
+• Keep ﬁles short and focused.
+• Avoid circular imports.
+• Model ﬁles should depend only on bindings, not on each other.
+5. Error Handling:
+• Map C status codes to meaningful Python exceptions using exceptions.py.
+• Catch exceptions at the GameEngine or GameUI level where appropriate.
+• Never let a ctypes call crash the game loop.
+6. Testability:
+• Write your methods so they can be tested independently of the UI.
+• Separate logic from rendering; for example, move_player() should not print anything or draw
+the screen.
+7. C Integration
+• The C game_engine remains the only interface between Python and C.
+• Your Python model must not replicate C-side data (rooms, player, pushables).
+• If you need new data from the game_engine, create and expose a new C function and call it
+from Python.
+Player Proﬁle (Persistence)
+• A JSON proﬁle ﬁle (e.g. player_profile.json) tracks player statistics. The minimum format of the
+JSON ﬁle is shown below. You may add other elements as long as you have these minimums.
+{
+"player_name": "Ada",
+"games_played": 3,
+"max_treasure_collected": 41,
+"most_rooms_world_completed": 19,
+"timestamp_last_played": "2026-03-05T21:15:05Z"
+}
+
+• The run_game.py ﬁle takes a --profile ﬂag that will be the path to the proﬁle ﬁle for that run of the
+game.
+– No login or identiﬁcation is required
+• If the proﬁle ﬁle is missing, it should be created. In this case, your program must prompt the user to
+enter the player name prior to starting the game.
+
+3
+
+• The summary of the proﬁle appears on the startup screen and then again on the quit screen. This
+must be done using curses, just like the main gameplay.
+• Store proﬁle ﬁles in assets/. There can be multiple proﬁle ﬁles.
+• Use the json package in Python to manage the json structure.
+– See the documentation for it in the Python documentation links listed in the lectures
+– The C side does none of the serialization, instead you use the accessor functions built in to the
+C API to get the data necessary to store in the proﬁle.
+• The proﬁle ﬁle should be updated after every game run (regardless of how the game ends). Use any
+reasonable defaults where necessary.
+Curses User Interface
+The GameEngine class handles game logic through ctypes wrappers, while a GameUI class handles rendering using curses.
+The UI for your game will be built using curses and should look similar one shown below:
+
+<<message bar here>>
+<<room number and name here>>
+###############
+#
+#
+# $
+$ #
+#
+#
+#
+@
+#
+#
+#
+# $
+$ #
+#
+x
+#
+###############
+
+Game Elements:
+@ - player
+# - wall
+$ - gold
+x - exit
+<<other elements/names here>>
+
+Game Controls: <<list the keys used to control the game>>
+<< Player Status bar here (e.g. gold collected, rooms played, rooms left>>
+<<A title for your game here>>
+<<your email address here>>
+
+The UI will have a message area at the top where messages for the user are displayed (e.g. “you can’t go
+that way” or “you picked up a <>”). It will also have a player status bar at the bottom that contains the
+player stats like name, number of treasures, etc.
+The keys shown below must be accepted as input to your program. You may include additional keys in the
+controls if you wish.
+• Arrows / WASD – move
+• > – to go through a portal
+• q – quit
+• r - to reset the game to the beginning world state
+You may reuse the curses examples given in class as part of your UI, as long as you attribute the source
+in your README and in code comments. Avoid hard-coding terminal sizes. Your layout should adapt
+gracefully to diﬀerent terminal sizes. You should raise an error if the terminal is too small to contain your
+game.
+
+4
+
+Your UI must have both a game startup splash screen and a game ending splash screen. These screens
+should contain the player proﬁle information from the ﬁle given on the command line and a note to “press
+any key to continue” as a minimum. You may add other embelishements.
+• It is important that you adhere to the same data ownership model we have used all semester. Ensure
+that your implementation keeps the C side of the game as the owner of the state and data.
+• You may add functions to the C side and to the Python side. If you do, do not edit the existing .h
+ﬁles - add new .h ﬁles. Remember to test all the new functions you write to meet the code coverage
+requirements of the autograder.
+
+Running the Game
+You will create a run_game.py ﬁle at the root of the python folder. It is responsible for getting the location
+of the desired .ini ﬁle and the proﬁle ﬁle from the user via a --config parameter and a --profile
+parameter. Use the same mechanism for getting command line arguments as you did for A2.
+The run_game program consists of a main that adjusts the system path if necessary, collects the command
+line arguments from the user and then launches the game_ui. More information on system paths will be
+provided in the UI lectures.
+
+Extended Features (30%)
+• Each extended feature is worth 15 points.
+– You must complete any two if you want to get 100% on the assignment.
+– Completing more that two will not increase your mark, but implementing fewer than two will
+reduce your grade (see Grade Allocations above).
+– You may complete more than two and then choose which two to be graded.
+• Extended features will be evaluated for functionality as well as design quality.
+Locked Doors (Switches)
+When switches are conﬁgured in the world generation settings, datagen creates gated portals that cannot
+be traversed until unlocked. A gated portal in a room is linked to a pressure plate switch in that same room.
+A switch is activated when a pushable object is placed (pushed) on top of it. The portal remains locked
+until its linked switch has a pushable on it. If the pushable is moved oﬀ the switch, the portal should lock
+again. How you visually distinguish a locked portal from an open one is up to you.
+• Portal and Switch structures already exist in the .h ﬁles and in the charset
+• You may need to refactor your movement code to simplify the addition of switches.
+Collect all the Treasure
+The game ends in victory when the player collects every treasure in the entire world. Once the ﬁnal treasure
+is collected, the game displays a victory message that includes the player proﬁle and possibly other things
+like total steps taken, rooms visited, or time elapsed. The player should be able to see their progress toward
+completion (e.g., “15/20 treasures collected”) in the message bar.
+• Player already tracks collected_count via player_get_collected_count()
+• You will need to add C functionality for total treasure count
+• You may need an end-of-game ﬂag in GameEngine
+Enhanced UI
+Add colour and a minimap showing the room graph with the player’s position in it to improve the player
+experience: - Use colour to enhance the appearance of the display. - Display a graphical overview of the
+
+5
+
+entire world showing all rooms as nodes with connections between them. Colour-code rooms to show
+which have been visited and where the player is currently located. Optionally also show which rooms
+contain uncollected treasure. The mini-map updates in real-time as the player explores the dungeon. - You
+will need to add C-side functionality to get a representation of the graph that can be turned into the mini
+map. How you implement it is up to you, but consider using an adjacency matrix (don’t just pass the C
+graph to Python!).
+Room-Speciﬁc Reset/Undo
+Implement two additional undo mechanisms. Players can undo their most recent move, returning to the
+previous position and restoring any treasures that were just collected or pushables that were just moved.
+Alternatively, players can reset the current room to its initial state returning all pushables and treasures to
+their original positions within that room while preserving the state of all other rooms and the player’s overall
+treasure count from other rooms. This allows players to recover from mistakes without restarting the entire
+game.
+• You may need to create c-side functionality to reset a room to original state.
+• You will need to be able to undo all types of moves, including those involving treasure and pushables.
+• Add all the necessary information (keys, etc.) to the Controls legend in the UI.
+
+6
+
+

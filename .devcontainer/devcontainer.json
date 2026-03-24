@@ -1,0 +1,22 @@
+{
+  "name": "CIS2750-A3",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "workspaceFolder": "/workspaces/A3",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.makefile-tools"
+      ],
+      "settings": {
+        "C_Cpp.default.configurationProvider": "ms-vscode.makefile-tools",
+        "files.eol": "\n"
+      }
+    }
+  },
+  "postCreateCommand": "make -C c clean && make -C c all",
+  "remoteUser": "vscode"
+}
