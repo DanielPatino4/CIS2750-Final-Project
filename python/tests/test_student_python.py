@@ -4,6 +4,7 @@ import os
 import unittest
 
 from treasure_runner.bindings import Direction
+from treasure_runner.models.exceptions import NoPortalError
 from treasure_runner.models.game_engine import GameEngine
 from treasure_runner.models.player import Player
 from run_integration import get_state, state_to_str
@@ -81,6 +82,13 @@ class TestStudentPython(unittest.TestCase):
                 pass
         self.engine.reset()
         self.assertEqual(get_state(self.engine), start_state)
+
+    def test_use_portal_callable(self):
+        self.assertTrue(callable(self.engine.use_portal))
+        try:
+            self.engine.use_portal()
+        except NoPortalError:
+            pass
 
 
 if __name__ == "__main__":

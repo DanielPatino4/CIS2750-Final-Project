@@ -6,7 +6,7 @@ import curses
 from typing import Any
 
 from ..bindings import Direction
-from ..models.exceptions import GameError, ImpassableError
+from ..models.exceptions import GameError, ImpassableError, NoPortalError
 
 
 class GameUI:
@@ -54,7 +54,7 @@ class GameUI:
                 continue
 
             if key == ord(">"):
-                self._message = "Portals currently trigger when you step onto them."
+                self._handle_portal_use()
                 continue
 
             direction = self._key_to_direction(key)
@@ -65,8 +65,27 @@ class GameUI:
             self._handle_move(direction)
 
         summary = self._build_session_summary()
-        self._show_end_screen(stdscr, summary)
+        self._show_end_screen(stdscr, profile, summary)
         return summary
+
+    def _handle_portal_use(self) -> None:
+        before_room = self._engine.get_current_room_id()
+
+        try:
+            self._engine.use_portal()
+        except NoPortalError:
+            self._message = "There is no portal here to use."
+            return
+        except GameError as exc:
+            self._message = str(exc) or "The portal could not be used."
+            return
+
+        after_room = self._engine.get_current_room_id()
+        self._visited_rooms.add(after_room)
+        if after_room != before_room:
+            self._message = f"Traversed portal to room {after_room}."
+        else:
+            self._message = "Used the portal."
 
     def _handle_move(self, direction: Direction) -> None:
         before = self._engine.get_status_snapshot()
@@ -105,31 +124,38 @@ class GameUI:
         self._ensure_terminal_size(stdscr, room_lines)
 
         stdscr.erase()
-        pos_x, pos_y = snapshot["position"]
-
         self._safe_addstr(stdscr, 0, 0, f"Message: {self._message}", curses.A_BOLD)
         self._safe_addstr(stdscr, 1, 0, f"Room {snapshot['room_id']}")
 
+        self._draw_room_lines(stdscr, room_lines)
+        self._draw_footer(stdscr, snapshot, room_lines)
+        stdscr.refresh()
+
+    def _draw_room_lines(self, stdscr, room_lines: list[str]) -> None:
         for index, line in enumerate(room_lines, start=3):
             self._safe_addstr(stdscr, index, 2, line)
 
+    def _draw_footer(self, stdscr, snapshot: dict[str, Any], room_lines: list[str]) -> None:
         controls_row = 4 + len(room_lines)
         status_row = controls_row + 1
         title_row = status_row + 2
         email_row = title_row + 1
 
-        controls = "Controls: arrows/WASD move | > portal | r reset | q quit"
-        status = (
+        self._safe_addstr(stdscr, controls_row, 0, self._controls_text())
+        self._safe_addstr(stdscr, status_row, 0, self._status_text(snapshot))
+        self._safe_addstr(stdscr, title_row, 0, self._title, curses.A_BOLD)
+        self._safe_addstr(stdscr, email_row, 0, self._email)
+
+    def _controls_text(self) -> str:
+        return "Controls: arrows/WASD move | > portal | r reset | q quit"
+
+    def _status_text(self, snapshot: dict[str, Any]) -> str:
+        pos_x, pos_y = snapshot["position"]
+        return (
             f"Player: {self._player_name} | Gold: {snapshot['collected_count']} "
             f"| Rooms visited: {len(self._visited_rooms)}/{snapshot['room_count']} "
             f"| Pos: ({pos_x}, {pos_y})"
         )
-
-        self._safe_addstr(stdscr, controls_row, 0, controls)
-        self._safe_addstr(stdscr, status_row, 0, status)
-        self._safe_addstr(stdscr, title_row, 0, self._title, curses.A_BOLD)
-        self._safe_addstr(stdscr, email_row, 0, self._email)
-        stdscr.refresh()
 
     def _show_startup_screen(self, stdscr, profile: dict[str, Any]) -> str:
         existing_name = str(profile.get("player_name") or "").strip()
@@ -146,14 +172,14 @@ class GameUI:
         stdscr.getch()
         return self._prompt_for_name(stdscr)
 
-    def _show_end_screen(self, stdscr, summary: dict[str, Any]) -> None:
-        lines = [
-            f"Player: {summary['player_name']}",
+    def _show_end_screen(self, stdscr, profile: dict[str, Any], summary: dict[str, Any]) -> None:
+        lines = self._profile_summary_lines(profile) + [
+            "",
             f"Quit reason: {summary['quit_reason']}",
             f"Treasure collected this run: {summary['collected_count']}",
             f"Rooms visited this run: {summary['rooms_visited']}",
             "",
-            "Press any key to finish.",
+            "Press any key to continue.",
         ]
         self._show_splash(stdscr, "Run Complete", lines)
         stdscr.getch()

@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "game_engine.h"
+#include "game_engine_portal.h"
 #include "player.h"
 #include "types.h"
 
@@ -560,6 +561,16 @@ START_TEST(test_game_engine_28_render_after_movement)
 END_TEST
 
 /* =====================================================
+ * Test 29: Use portal with NULL engine
+ * ===================================================== */
+START_TEST(test_game_engine_29_use_portal_null_engine)
+{
+    Status result = game_engine_use_portal(NULL);
+    ck_assert_int_eq(result, INVALID_ARGUMENT);
+}
+END_TEST
+
+/* =====================================================
  * Test Suite Registration
  * ===================================================== */
 Suite *game_engine_suite(void)
@@ -612,6 +623,7 @@ Suite *game_engine_suite(void)
     /* Integration tests */
     tcase_add_test(tc_core, test_game_engine_27_sequential_movements);
     tcase_add_test(tc_core, test_game_engine_28_render_after_movement);
+    tcase_add_test(tc_core, test_game_engine_29_use_portal_null_engine);
 
     suite_add_tcase(s, tc_core);
     return s;

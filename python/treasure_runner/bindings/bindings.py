@@ -121,6 +121,9 @@ lib.game_engine_get_player.argtypes = [GameEngine]
 lib.game_engine_move_player.argtypes = [GameEngine, ctypes.c_int]
 lib.game_engine_move_player.restype = ctypes.c_int
 
+lib.game_engine_use_portal.argtypes = [GameEngine]
+lib.game_engine_use_portal.restype = ctypes.c_int
+
 lib.game_engine_render_current_room.argtypes = [GameEngine, ctypes.POINTER(ctypes.c_char_p)]
 lib.game_engine_render_current_room.restype = ctypes.c_int
 

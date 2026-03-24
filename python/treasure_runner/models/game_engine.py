@@ -50,6 +50,12 @@ class GameEngine:
         if status != Status.OK:
             raise status_to_exception(status, "game_engine_move_player failed")
 
+    def use_portal(self) -> None:
+        eng = self._require_engine()
+        status = lib.game_engine_use_portal(eng)
+        if status != Status.OK:
+            raise status_to_exception(status, "game_engine_use_portal failed")
+
     def render_current_room(self) -> str:
         eng = self._require_engine()
         c_str = ctypes.c_char_p()
