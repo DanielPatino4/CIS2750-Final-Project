@@ -78,7 +78,7 @@ Status game_engine_use_portal(GameEngine *eng) {
         return move_player_to_portal_destination(eng, portal_dest);
     }
 
-    const Direction directions[] = {
+        const Direction DIRECTIONS[] = {
         DIR_NORTH,
         DIR_SOUTH,
         DIR_EAST,
@@ -91,7 +91,7 @@ Status game_engine_use_portal(GameEngine *eng) {
     for (int i = 0; i < 4; i++) {
         int adj_x = x;
         int adj_y = y;
-        if (!next_position_for_portal(directions[i], x, y, &adj_x, &adj_y)) {
+            if (!next_position_for_portal(DIRECTIONS[i], x, y, &adj_x, &adj_y)) {
             continue;
         }
 

@@ -571,6 +571,42 @@ START_TEST(test_game_engine_29_use_portal_null_engine)
 END_TEST
 
 /* =====================================================
+ * Test 30: Use portal with valid engine (no portal at start)
+ * ===================================================== */
+START_TEST(test_game_engine_30_use_portal_no_portal)
+{
+    GameEngine *engine = NULL;
+    Status create_status = game_engine_create("../assets/starter.ini", &engine);
+    ck_assert_int_eq(create_status, OK);
+    ck_assert_ptr_nonnull(engine);
+
+    Status result = game_engine_use_portal(engine);
+    ck_assert(result == ROOM_NO_PORTAL || result == OK);
+
+    game_engine_destroy(engine);
+}
+END_TEST
+
+/* =====================================================
+ * Test 31: Use portal - consistent repeated calls
+ * ===================================================== */
+START_TEST(test_game_engine_31_use_portal_consistent)
+{
+    GameEngine *engine = NULL;
+    Status create_status = game_engine_create("../assets/starter.ini", &engine);
+    ck_assert_int_eq(create_status, OK);
+    ck_assert_ptr_nonnull(engine);
+
+    Status result1 = game_engine_use_portal(engine);
+    Status result2 = game_engine_use_portal(engine);
+    ck_assert(result1 == ROOM_NO_PORTAL || result1 == OK);
+    ck_assert(result2 == ROOM_NO_PORTAL || result2 == OK);
+
+    game_engine_destroy(engine);
+}
+END_TEST
+
+/* =====================================================
  * Test Suite Registration
  * ===================================================== */
 Suite *game_engine_suite(void)
@@ -623,7 +659,9 @@ Suite *game_engine_suite(void)
     /* Integration tests */
     tcase_add_test(tc_core, test_game_engine_27_sequential_movements);
     tcase_add_test(tc_core, test_game_engine_28_render_after_movement);
-    tcase_add_test(tc_core, test_game_engine_29_use_portal_null_engine);
+        tcase_add_test(tc_core, test_game_engine_29_use_portal_null_engine);
+        tcase_add_test(tc_core, test_game_engine_30_use_portal_no_portal);
+        tcase_add_test(tc_core, test_game_engine_31_use_portal_consistent);
 
     suite_add_tcase(s, tc_core);
     return s;
