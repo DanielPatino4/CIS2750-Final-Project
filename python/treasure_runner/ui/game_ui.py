@@ -62,7 +62,9 @@ class GameUI:
                 self._message = "Use arrows/WASD to move, r to reset, q to quit."
                 continue
 
-            self._handle_move(direction)
+            if self._handle_move(direction):
+                self._quit_reason = "Victory: collected all treasure"
+                break
 
         summary = self._build_session_summary()
         self._show_end_screen(stdscr, profile, summary)
@@ -87,7 +89,7 @@ class GameUI:
         else:
             self._message = "Used the portal."
 
-    def _handle_move(self, direction: Direction) -> None:
+    def _handle_move(self, direction: Direction) -> bool:
         before = self._engine.get_status_snapshot()
         before_treasures = self._engine.get_collected_treasures()
 
@@ -95,13 +97,17 @@ class GameUI:
             self._engine.move_player(direction)
         except ImpassableError:
             self._message = "You cannot go that way."
-            return
+            return False
         except GameError as exc:
             self._message = str(exc) or "That move failed."
-            return
+            return False
 
         after = self._engine.get_status_snapshot()
         self._visited_rooms.add(after["room_id"])
+
+        if self._is_victory(after):
+            self._message = "Victory! You collected all treasure."
+            return True
 
         if after["collected_count"] > before["collected_count"]:
             new_treasures = self._engine.get_collected_treasures()
@@ -110,13 +116,19 @@ class GameUI:
                 self._message = f"You picked up {latest}."
             else:
                 self._message = "You picked up a treasure."
-            return
+            return False
 
         if after["room_id"] != before["room_id"]:
             self._message = f"Entered room {after['room_id']}."
-            return
+            return False
 
         self._message = f"Moved {direction.name.lower()}."
+        return False
+
+    def _is_victory(self, snapshot: dict[str, Any]) -> bool:
+        total_treasure_count = int(snapshot.get("total_treasure_count", 0))
+        collected_count = int(snapshot.get("collected_count", 0))
+        return total_treasure_count > 0 and collected_count >= total_treasure_count
 
     def _draw_game_screen(self, stdscr) -> None:
         snapshot = self._engine.get_status_snapshot()
@@ -151,8 +163,10 @@ class GameUI:
 
     def _status_text(self, snapshot: dict[str, Any]) -> str:
         pos_x, pos_y = snapshot["position"]
+        collected_count = int(snapshot["collected_count"])
+        total_treasure_count = int(snapshot.get("total_treasure_count", 0))
         return (
-            f"Player: {self._player_name} | Gold: {snapshot['collected_count']} "
+            f"Player: {self._player_name} | Gold: {collected_count}/{total_treasure_count} "
             f"| Rooms visited: {len(self._visited_rooms)}/{snapshot['room_count']} "
             f"| Pos: ({pos_x}, {pos_y})"
         )
@@ -173,15 +187,19 @@ class GameUI:
         return self._prompt_for_name(stdscr)
 
     def _show_end_screen(self, stdscr, profile: dict[str, Any], summary: dict[str, Any]) -> None:
+        heading = "Victory!" if str(summary.get("quit_reason", "")).startswith("Victory") else "Run Complete"
         lines = self._profile_summary_lines(profile) + [
             "",
             f"Quit reason: {summary['quit_reason']}",
-            f"Treasure collected this run: {summary['collected_count']}",
+            (
+                "Treasure collected this run: "
+                f"{summary['collected_count']}/{summary.get('total_treasure_count', summary['collected_count'])}"
+            ),
             f"Rooms visited this run: {summary['rooms_visited']}",
             "",
             "Press any key to continue.",
         ]
-        self._show_splash(stdscr, "Run Complete", lines)
+        self._show_splash(stdscr, heading, lines)
         stdscr.getch()
 
     def _show_splash(self, stdscr, heading: str, lines: list[str]) -> None:
@@ -248,6 +266,7 @@ class GameUI:
         return {
             "player_name": self._player_name,
             "collected_count": snapshot["collected_count"],
+            "total_treasure_count": snapshot.get("total_treasure_count", snapshot["collected_count"]),
             "rooms_visited": len(self._visited_rooms),
             "quit_reason": self._quit_reason,
         }

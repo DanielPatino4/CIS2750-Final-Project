@@ -130,6 +130,9 @@ lib.game_engine_render_current_room.restype = ctypes.c_int
 lib.game_engine_get_room_count.argtypes = [GameEngine, ctypes.POINTER(ctypes.c_int)]
 lib.game_engine_get_room_count.restype = ctypes.c_int
 
+lib.game_engine_get_total_treasure_count.argtypes = [GameEngine, ctypes.POINTER(ctypes.c_int)]
+lib.game_engine_get_total_treasure_count.restype = ctypes.c_int
+
 lib.game_engine_get_room_dimensions.argtypes = [
     GameEngine,
     ctypes.POINTER(ctypes.c_int),

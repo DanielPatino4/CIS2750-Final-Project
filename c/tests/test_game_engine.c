@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "game_engine.h"
+#include "game_engine_progress.h"
 #include "game_engine_portal.h"
 #include "player.h"
 #include "types.h"
@@ -607,6 +608,53 @@ START_TEST(test_game_engine_31_use_portal_consistent)
 END_TEST
 
 /* =====================================================
+ * Test 32: Total treasure count with NULL engine
+ * ===================================================== */
+START_TEST(test_game_engine_32_total_treasure_null_engine)
+{
+    int count = -1;
+    Status result = game_engine_get_total_treasure_count(NULL, &count);
+    ck_assert_int_eq(result, INVALID_ARGUMENT);
+}
+END_TEST
+
+/* =====================================================
+ * Test 33: Total treasure count with NULL output pointer
+ * ===================================================== */
+START_TEST(test_game_engine_33_total_treasure_null_output)
+{
+    GameEngine *engine = NULL;
+    Status create_status = game_engine_create("../assets/starter.ini", &engine);
+    ck_assert_int_eq(create_status, OK);
+    ck_assert_ptr_nonnull(engine);
+
+    Status result = game_engine_get_total_treasure_count(engine, NULL);
+    ck_assert_int_eq(result, NULL_POINTER);
+
+    game_engine_destroy(engine);
+}
+END_TEST
+
+/* =====================================================
+ * Test 34: Total treasure count returns positive value
+ * ===================================================== */
+START_TEST(test_game_engine_34_total_treasure_positive)
+{
+    GameEngine *engine = NULL;
+    Status create_status = game_engine_create("../assets/starter.ini", &engine);
+    ck_assert_int_eq(create_status, OK);
+    ck_assert_ptr_nonnull(engine);
+
+    int count = 0;
+    Status result = game_engine_get_total_treasure_count(engine, &count);
+    ck_assert_int_eq(result, OK);
+    ck_assert_int_gt(count, 0);
+
+    game_engine_destroy(engine);
+}
+END_TEST
+
+/* =====================================================
  * Test Suite Registration
  * ===================================================== */
 Suite *game_engine_suite(void)
@@ -662,6 +710,9 @@ Suite *game_engine_suite(void)
         tcase_add_test(tc_core, test_game_engine_29_use_portal_null_engine);
         tcase_add_test(tc_core, test_game_engine_30_use_portal_no_portal);
         tcase_add_test(tc_core, test_game_engine_31_use_portal_consistent);
+        tcase_add_test(tc_core, test_game_engine_32_total_treasure_null_engine);
+        tcase_add_test(tc_core, test_game_engine_33_total_treasure_null_output);
+        tcase_add_test(tc_core, test_game_engine_34_total_treasure_positive);
 
     suite_add_tcase(s, tc_core);
     return s;

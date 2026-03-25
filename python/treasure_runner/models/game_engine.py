@@ -79,6 +79,17 @@ class GameEngine:
             raise status_to_exception(status, "game_engine_get_room_count failed")
         return int(count_out.value)
 
+    def get_total_treasure_count(self) -> int:
+        eng = self._require_engine()
+        count_out = ctypes.c_int()
+        status = lib.game_engine_get_total_treasure_count(eng, ctypes.byref(count_out))
+        if status != Status.OK:
+            raise status_to_exception(status, "game_engine_get_total_treasure_count failed")
+        return int(count_out.value)
+
+    def all_treasure_collected(self) -> bool:
+        return self.get_collected_count() >= self.get_total_treasure_count()
+
     def get_room_dimensions(self) -> tuple[int, int]:
         eng = self._require_engine()
         width_out = ctypes.c_int()
@@ -126,6 +137,7 @@ class GameEngine:
             "room_id": self.get_current_room_id(),
             "position": (pos_x, pos_y),
             "collected_count": self.get_collected_count(),
+            "total_treasure_count": self.get_total_treasure_count(),
             "room_count": self.get_room_count(),
         }
 

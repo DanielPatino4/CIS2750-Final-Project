@@ -90,6 +90,12 @@ class TestStudentPython(unittest.TestCase):
         except NoPortalError:
             pass
 
+    def test_total_treasure_count(self):
+        total = self.engine.get_total_treasure_count()
+        self.assertIsInstance(total, int)
+        self.assertGreater(total, 0)
+        self.assertFalse(self.engine.all_treasure_collected())
+
 
 if __name__ == "__main__":
     unittest.main()
