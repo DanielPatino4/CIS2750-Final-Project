@@ -4,6 +4,11 @@
 #include "player.h"
 #include "room.h"
 
+Status room_get_usable_portal_destination(const Room *r,
+                                          int x,
+                                          int y,
+                                          int *dest_out);
+
 static const Room *get_current_room_for_portal(const GameEngine *eng) {
     if (eng == NULL || eng->graph == NULL || eng->player == NULL) {
         return NULL;

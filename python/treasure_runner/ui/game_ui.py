@@ -95,34 +95,50 @@ class GameUI:
     def _handle_move(self, direction: Direction) -> bool:
         before = self._engine.get_status_snapshot()
         before_treasures = self._engine.get_collected_treasures()
-        should_end_run = False
 
         try:
             self._engine.move_player(direction)
         except ImpassableError:
             self._message = "You cannot go that way."
+            return False
         except GameError as exc:
             self._message = str(exc) or "That move failed."
-        else:
-            after = self._engine.get_status_snapshot()
-            self._visited_rooms.add(after["room_id"])
+            return False
 
-            if self._is_victory(after):
-                self._message = "Victory! You collected all treasure."
-                should_end_run = True
-            elif after["collected_count"] > before["collected_count"]:
-                new_treasures = self._engine.get_collected_treasures()
-                if len(new_treasures) > len(before_treasures):
-                    latest = new_treasures[-1].get("name") or "a treasure"
-                    self._message = f"You picked up {latest}."
-                else:
-                    self._message = "You picked up a treasure."
-            elif after["room_id"] != before["room_id"]:
-                self._message = f"Entered room {after['room_id']}."
-            else:
-                self._message = f"Moved {direction.name.lower()}."
+        after = self._engine.get_status_snapshot()
+        self._visited_rooms.add(after["room_id"])
+        return self._apply_move_result(before, before_treasures, after, direction)
 
-        return should_end_run
+    def _apply_move_result(
+        self,
+        before: dict[str, Any],
+        before_treasures: list[dict[str, Any]],
+        after: dict[str, Any],
+        direction: Direction,
+    ) -> bool:
+        if self._is_victory(after):
+            self._message = "Victory! You collected all treasure."
+            return True
+
+        if after["collected_count"] > before["collected_count"]:
+            self._update_treasure_pickup_message(before_treasures)
+            return False
+
+        if after["room_id"] != before["room_id"]:
+            self._message = f"Entered room {after['room_id']}."
+            return False
+
+        self._message = f"Moved {direction.name.lower()}."
+        return False
+
+    def _update_treasure_pickup_message(self, before_treasures: list[dict[str, Any]]) -> None:
+        new_treasures = self._engine.get_collected_treasures()
+        if len(new_treasures) > len(before_treasures):
+            latest = new_treasures[-1].get("name") or "a treasure"
+            self._message = f"You picked up {latest}."
+            return
+
+        self._message = "You picked up a treasure."
 
     def _is_victory(self, snapshot: dict[str, Any]) -> bool:
         total_treasure_count = int(snapshot.get("total_treasure_count", 0))

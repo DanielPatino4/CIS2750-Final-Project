@@ -3,6 +3,13 @@
 #include <string.h>
 #include "room.h"
 
+Status room_set_pushables(Room *r, Pushable *pushables, int pushable_count);
+Status room_set_switches(Room *r, Switch *switches, int switch_count);
+Status room_get_usable_portal_destination(const Room *r,
+                                          int x,
+                                          int y,
+                                          int *dest_out);
+
 /* ============================================================
  * ROOM TESTING STRATEGY
  *

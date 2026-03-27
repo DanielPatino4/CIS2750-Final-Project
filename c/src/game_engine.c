@@ -8,6 +8,11 @@
 #include <string.h>
 #include <stdio.h>
 
+Status room_get_usable_portal_destination(const Room *r,
+                                          int x,
+                                          int y,
+                                          int *dest_out);
+
 /* ============================================================
  * GAME ENGINE IMPLEMENTATION
  *
