@@ -95,43 +95,39 @@ class GameUI:
     def _handle_move(self, direction: Direction) -> bool:
         before = self._engine.get_status_snapshot()
         before_treasures = self._engine.get_collected_treasures()
+        should_end_run = False
 
         try:
             self._engine.move_player(direction)
         except ImpassableError:
             self._message = "You cannot go that way."
-            return False
         except GameError as exc:
             self._message = str(exc) or "That move failed."
-            return False
+        else:
+            after = self._engine.get_status_snapshot()
+            self._visited_rooms.add(after["room_id"])
 
-        after = self._engine.get_status_snapshot()
-        self._visited_rooms.add(after["room_id"])
-
-        if self._is_victory(after):
-            self._message = "Victory! You collected all treasure."
-            return True
-
-        if after["collected_count"] > before["collected_count"]:
-            new_treasures = self._engine.get_collected_treasures()
-            if len(new_treasures) > len(before_treasures):
-                latest = new_treasures[-1].get("name") or "a treasure"
-                self._message = f"You picked up {latest}."
+            if self._is_victory(after):
+                self._message = "Victory! You collected all treasure."
+                should_end_run = True
+            elif after["collected_count"] > before["collected_count"]:
+                new_treasures = self._engine.get_collected_treasures()
+                if len(new_treasures) > len(before_treasures):
+                    latest = new_treasures[-1].get("name") or "a treasure"
+                    self._message = f"You picked up {latest}."
+                else:
+                    self._message = "You picked up a treasure."
+            elif after["room_id"] != before["room_id"]:
+                self._message = f"Entered room {after['room_id']}."
             else:
-                self._message = "You picked up a treasure."
-            return False
+                self._message = f"Moved {direction.name.lower()}."
 
-        if after["room_id"] != before["room_id"]:
-            self._message = f"Entered room {after['room_id']}."
-            return False
-
-        self._message = f"Moved {direction.name.lower()}."
-        return False
+        return should_end_run
 
     def _is_victory(self, snapshot: dict[str, Any]) -> bool:
         total_treasure_count = int(snapshot.get("total_treasure_count", 0))
         collected_count = int(snapshot.get("collected_count", 0))
-        return total_treasure_count > 0 and collected_count >= total_treasure_count
+        return 0 < total_treasure_count <= collected_count
 
     def _draw_game_screen(self, stdscr) -> None:
         snapshot = self._engine.get_status_snapshot()
