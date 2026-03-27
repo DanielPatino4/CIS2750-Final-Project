@@ -384,6 +384,76 @@ START_TEST(test_room_get_usable_portal_gated_locking) {
 }
 END_TEST
 
+// Test 18e: Usable portal destination rejects NULL room
+START_TEST(test_room_get_usable_portal_null_room) {
+    int dest = -1;
+    Status status = room_get_usable_portal_destination(NULL, 1, 1, &dest);
+    ck_assert_int_eq(status, INVALID_ARGUMENT);
+}
+END_TEST
+
+// Test 18f: Ungated portal is always usable
+START_TEST(test_room_get_usable_portal_ungated) {
+    Room *r = room_create(1, "Room", 8, 8);
+
+    Portal *portals = malloc(sizeof(Portal));
+    portals[0].id = 3;
+    portals[0].x = 2;
+    portals[0].y = 2;
+    portals[0].target_room_id = 9;
+    portals[0].name = NULL;
+    portals[0].gated = false;
+    portals[0].required_switch_id = -1;
+    room_set_portals(r, portals, 1);
+
+    int dest = -1;
+    Status status = room_get_usable_portal_destination(r, 2, 2, &dest);
+    ck_assert_int_eq(status, OK);
+    ck_assert_int_eq(dest, 9);
+
+    room_destroy(r);
+}
+END_TEST
+
+// Test 18g: Gated portal can unlock via portal_id-linked switch fallback
+START_TEST(test_room_get_usable_portal_switch_fallback) {
+    Room *r = room_create(1, "Room", 8, 8);
+
+    Portal *portals = malloc(sizeof(Portal));
+    portals[0].id = 11;
+    portals[0].x = 4;
+    portals[0].y = 4;
+    portals[0].target_room_id = 12;
+    portals[0].name = NULL;
+    portals[0].gated = true;
+    portals[0].required_switch_id = 999;  /* intentionally missing id */
+    room_set_portals(r, portals, 1);
+
+    Switch *switches = malloc(sizeof(Switch));
+    switches[0].id = 21;
+    switches[0].x = 1;
+    switches[0].y = 1;
+    switches[0].portal_id = 11;  /* fallback linkage by portal id */
+    room_set_switches(r, switches, 1);
+
+    Pushable *pushables = malloc(sizeof(Pushable));
+    pushables[0].id = 1;
+    pushables[0].name = NULL;
+    pushables[0].initial_x = 6;
+    pushables[0].initial_y = 6;
+    pushables[0].x = 1;
+    pushables[0].y = 1;  /* active on switch */
+    room_set_pushables(r, pushables, 1);
+
+    int dest = -1;
+    Status status = room_get_usable_portal_destination(r, 4, 4, &dest);
+    ck_assert_int_eq(status, OK);
+    ck_assert_int_eq(dest, 12);
+
+    room_destroy(r);
+}
+END_TEST
+
 
 // Test 19: Check walkability with floor grid
 START_TEST(test_room_is_walkable_with_grid) {
@@ -637,6 +707,9 @@ Suite *room_suite(void) {
     tcase_add_test(tc_core, test_room_get_usable_portal_no_portal);
     tcase_add_test(tc_core, test_room_get_usable_portal_null_out);
     tcase_add_test(tc_core, test_room_get_usable_portal_gated_locking);
+    tcase_add_test(tc_core, test_room_get_usable_portal_null_room);
+    tcase_add_test(tc_core, test_room_get_usable_portal_ungated);
+    tcase_add_test(tc_core, test_room_get_usable_portal_switch_fallback);
     tcase_add_test(tc_core, test_room_is_walkable_with_grid);
     tcase_add_test(tc_core, test_room_is_walkable_null_grid);
     tcase_add_test(tc_core, test_room_is_walkable_null_room);

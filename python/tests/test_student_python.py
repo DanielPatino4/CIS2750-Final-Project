@@ -4,7 +4,11 @@ import os
 import unittest
 
 from treasure_runner.bindings import Direction
+from treasure_runner.bindings import Status
 from treasure_runner.models.exceptions import NoPortalError
+from treasure_runner.models.exceptions import StatusError
+from treasure_runner.models.exceptions import status_to_exception
+from treasure_runner.models.exceptions import status_to_status_exception
 from treasure_runner.models.game_engine import GameEngine
 from treasure_runner.models.player import Player
 from run_integration import get_state, state_to_str
@@ -95,6 +99,20 @@ class TestStudentPython(unittest.TestCase):
         self.assertIsInstance(total, int)
         self.assertGreater(total, 0)
         self.assertFalse(self.engine.all_treasure_collected())
+
+    def test_status_to_exception_mappings(self):
+        exc = status_to_exception(Status.ROOM_NO_PORTAL, "no portal")
+        self.assertIsInstance(exc, NoPortalError)
+
+        exc = status_to_exception(999999, "unknown")
+        self.assertIsInstance(exc, Exception)
+
+    def test_status_to_status_exception_mappings(self):
+        exc = status_to_status_exception(Status.WL_ERR_CONFIG, "config")
+        self.assertIsInstance(exc, Exception)
+
+        exc = status_to_status_exception(999999, "unknown")
+        self.assertIsInstance(exc, StatusError)
 
 
 if __name__ == "__main__":
