@@ -14,6 +14,7 @@
  * Returns:
  *   OK on success
  *   INVALID_ARGUMENT if eng is NULL
+ *   ROOM_IMPASSABLE if a matching portal exists but is currently locked
  *   ROOM_NO_PORTAL if no current or uniquely adjacent portal is available
  *   GE_NO_SUCH_ROOM if the portal destination room cannot be found
  *   INTERNAL_ERROR on invariant failure

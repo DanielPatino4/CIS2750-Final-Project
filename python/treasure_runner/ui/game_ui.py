@@ -75,6 +75,9 @@ class GameUI:
 
         try:
             self._engine.use_portal()
+        except ImpassableError:
+            self._message = "That portal is locked. Activate its switch first."
+            return
         except NoPortalError:
             self._message = "There is no portal here to use."
             return

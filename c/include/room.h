@@ -190,6 +190,24 @@ Status room_set_portals(Room *r, Portal *portals, int portal_count);
  */
 Status room_set_treasures(Room *r, Treasure *treasures, int treasure_count);
 
+/*
+ * Set pushables (ownership transfers to the room).
+ *
+ * Returns:
+ *   OK on success
+ *   INVALID_ARGUMENT if room is NULL or parameters are inconsistent
+ */
+Status room_set_pushables(Room *r, Pushable *pushables, int pushable_count);
+
+/*
+ * Set switches (ownership transfers to the room).
+ *
+ * Returns:
+ *   OK on success
+ *   INVALID_ARGUMENT if room is NULL or parameters are inconsistent
+ */
+Status room_set_switches(Room *r, Switch *switches, int switch_count);
+
 
 /* ============================================================
  * Treasure Management
@@ -238,6 +256,21 @@ int room_get_treasure_at(const Room *r, int x, int y);
  *   -1   : no portal at position or room is NULL
  */
 int room_get_portal_destination(const Room *r, int x, int y);
+
+/*
+ * Check whether a portal at (x,y) can currently be traversed.
+ *
+ * Returns:
+ *   OK on success (dest_out set to destination room ID)
+ *   ROOM_NO_PORTAL if no portal exists at this location
+ *   ROOM_IMPASSABLE if a portal exists but is currently locked
+ *   INVALID_ARGUMENT if room is NULL
+ *   NULL_POINTER if dest_out is NULL
+ */
+Status room_get_usable_portal_destination(const Room *r,
+                                          int x,
+                                          int y,
+                                          int *dest_out);
 
 
 /* ============================================================

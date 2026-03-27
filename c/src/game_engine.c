@@ -88,10 +88,18 @@ static Status game_engine_validate_target_move(Room *room,
 }
 
 static Status game_engine_apply_final_position(GameEngine *eng, Room *room, int new_x, int new_y) {
-    int portal_dest = room_get_portal_destination(room, new_x, new_y);
-    if (portal_dest < 0) {
+    int portal_dest = -1;
+    Status portal_status = room_get_usable_portal_destination(room, new_x, new_y, &portal_dest);
+    if (portal_status == ROOM_NO_PORTAL) {
         player_set_position(eng->player, new_x, new_y);
         return OK;
+    }
+    if (portal_status == ROOM_IMPASSABLE) {
+        player_set_position(eng->player, new_x, new_y);
+        return OK;
+    }
+    if (portal_status != OK) {
+        return portal_status;
     }
 
     player_move_to_room(eng->player, portal_dest);

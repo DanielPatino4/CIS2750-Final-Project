@@ -67,6 +67,8 @@ static bool copy_portals(Room *r, const DG_Room *dg_room) {
         portals[i].y = dg_room->portals[i].y;
         portals[i].target_room_id = dg_room->portals[i].neighbor_id;
         portals[i].name = NULL;
+        portals[i].gated = false;
+        portals[i].required_switch_id = -1;
     }
 
     room_set_portals(r, portals, dg_room->portal_count);
@@ -143,6 +145,20 @@ static bool copy_switches(Room *r, const DG_Room *dg_room) {
     }
 
     room_set_switches(r, switches, dg_room->switch_count);
+
+    for (int i = 0; i < r->switch_count; i++) {
+        int portal_id = r->switches[i].portal_id;
+        for (int j = 0; j < r->portal_count; j++) {
+            if (r->portals[j].id != portal_id) {
+                continue;
+            }
+
+            r->portals[j].gated = true;
+            r->portals[j].required_switch_id = r->switches[i].id;
+            break;
+        }
+    }
+
     return true;
 }
 

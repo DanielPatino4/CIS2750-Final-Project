@@ -73,12 +73,19 @@ Status game_engine_use_portal(GameEngine *eng) {
         return pos_status;
     }
 
-    int portal_dest = room_get_portal_destination(room, x, y);
-    if (portal_dest >= 0) {
+    int portal_dest = -1;
+    Status current_portal_status = room_get_usable_portal_destination(room, x, y, &portal_dest);
+    if (current_portal_status == OK) {
         return move_player_to_portal_destination(eng, portal_dest);
     }
+    if (current_portal_status == ROOM_IMPASSABLE) {
+        return ROOM_IMPASSABLE;
+    }
+    if (current_portal_status != ROOM_NO_PORTAL) {
+        return current_portal_status;
+    }
 
-        const Direction DIRECTIONS[] = {
+    const Direction DIRECTIONS[] = {
         DIR_NORTH,
         DIR_SOUTH,
         DIR_EAST,
@@ -87,26 +94,39 @@ Status game_engine_use_portal(GameEngine *eng) {
 
     int found_dest = -1;
     int found_count = 0;
+    int locked_count = 0;
 
     for (int i = 0; i < 4; i++) {
         int adj_x = x;
         int adj_y = y;
-            if (!next_position_for_portal(DIRECTIONS[i], x, y, &adj_x, &adj_y)) {
+        if (!next_position_for_portal(DIRECTIONS[i], x, y, &adj_x, &adj_y)) {
             continue;
         }
 
-        int adjacent_dest = room_get_portal_destination(room, adj_x, adj_y);
-        if (adjacent_dest < 0) {
+        int adjacent_dest = -1;
+        Status adjacent_status = room_get_usable_portal_destination(room, adj_x, adj_y, &adjacent_dest);
+        if (adjacent_status == ROOM_NO_PORTAL) {
             continue;
+        }
+        if (adjacent_status == ROOM_IMPASSABLE) {
+            locked_count++;
+            continue;
+        }
+        if (adjacent_status != OK) {
+            return adjacent_status;
         }
 
         found_dest = adjacent_dest;
         found_count++;
     }
 
-    if (found_count != 1) {
-        return ROOM_NO_PORTAL;
+    if (found_count == 1) {
+        return move_player_to_portal_destination(eng, found_dest);
     }
 
-    return move_player_to_portal_destination(eng, found_dest);
+    if (locked_count > 0) {
+        return ROOM_IMPASSABLE;
+    }
+
+    return ROOM_NO_PORTAL;
 }

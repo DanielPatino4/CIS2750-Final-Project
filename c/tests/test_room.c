@@ -309,6 +309,74 @@ START_TEST(test_room_get_portal_destination_null) {
 }
 END_TEST
 
+// Test 18b: Usable portal destination with no portal
+START_TEST(test_room_get_usable_portal_no_portal) {
+    Room *r = room_create(1, "Room", 8, 8);
+
+    int dest = -1;
+    Status status = room_get_usable_portal_destination(r, 1, 1, &dest);
+    ck_assert_int_eq(status, ROOM_NO_PORTAL);
+
+    room_destroy(r);
+}
+END_TEST
+
+// Test 18c: Usable portal destination rejects NULL output
+START_TEST(test_room_get_usable_portal_null_out) {
+    Room *r = room_create(1, "Room", 8, 8);
+
+    Status status = room_get_usable_portal_destination(r, 1, 1, NULL);
+    ck_assert_int_eq(status, NULL_POINTER);
+
+    room_destroy(r);
+}
+END_TEST
+
+// Test 18d: Gated portal stays locked until switch is active
+START_TEST(test_room_get_usable_portal_gated_locking) {
+    Room *r = room_create(1, "Room", 8, 8);
+
+    Portal *portals = malloc(sizeof(Portal));
+    portals[0].id = 7;
+    portals[0].x = 3;
+    portals[0].y = 3;
+    portals[0].target_room_id = 2;
+    portals[0].name = NULL;
+    portals[0].gated = true;
+    portals[0].required_switch_id = 4;
+    room_set_portals(r, portals, 1);
+
+    Switch *switches = malloc(sizeof(Switch));
+    switches[0].id = 4;
+    switches[0].x = 1;
+    switches[0].y = 1;
+    switches[0].portal_id = 7;
+    room_set_switches(r, switches, 1);
+
+    Pushable *pushables = malloc(sizeof(Pushable));
+    pushables[0].id = 2;
+    pushables[0].name = NULL;
+    pushables[0].initial_x = 6;
+    pushables[0].initial_y = 6;
+    pushables[0].x = 6;
+    pushables[0].y = 6;
+    room_set_pushables(r, pushables, 1);
+
+    int dest = -1;
+    Status status = room_get_usable_portal_destination(r, 3, 3, &dest);
+    ck_assert_int_eq(status, ROOM_IMPASSABLE);
+
+    r->pushables[0].x = 1;
+    r->pushables[0].y = 1;
+
+    status = room_get_usable_portal_destination(r, 3, 3, &dest);
+    ck_assert_int_eq(status, OK);
+    ck_assert_int_eq(dest, 2);
+
+    room_destroy(r);
+}
+END_TEST
+
 
 // Test 19: Check walkability with floor grid
 START_TEST(test_room_is_walkable_with_grid) {
@@ -559,6 +627,9 @@ Suite *room_suite(void) {
     tcase_add_test(tc_core, test_room_get_treasure_at_null);
     tcase_add_test(tc_core, test_room_get_portal_destination);
     tcase_add_test(tc_core, test_room_get_portal_destination_null);
+    tcase_add_test(tc_core, test_room_get_usable_portal_no_portal);
+    tcase_add_test(tc_core, test_room_get_usable_portal_null_out);
+    tcase_add_test(tc_core, test_room_get_usable_portal_gated_locking);
     tcase_add_test(tc_core, test_room_is_walkable_with_grid);
     tcase_add_test(tc_core, test_room_is_walkable_null_grid);
     tcase_add_test(tc_core, test_room_is_walkable_null_room);

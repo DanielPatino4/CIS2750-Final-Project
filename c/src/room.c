@@ -370,6 +370,110 @@ int room_get_portal_destination(const Room *r, int x, int y) {
     return -1; //not right location
 }
 
+static int room_find_portal_index_at(const Room *r, int x, int y) {
+    if (r == NULL) {
+        return -1;
+    }
+
+    for (int i = 0; i < r->portal_count; i++) {
+        if (r->portals[i].x == x && r->portals[i].y == y) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+static int room_find_switch_index_by_id(const Room *r, int switch_id) {
+    if (r == NULL || switch_id < 0) {
+        return -1;
+    }
+
+    for (int i = 0; i < r->switch_count; i++) {
+        if (r->switches[i].id == switch_id) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+static int room_find_switch_index_for_portal(const Room *r, int portal_id) {
+    if (r == NULL || portal_id < 0) {
+        return -1;
+    }
+
+    for (int i = 0; i < r->switch_count; i++) {
+        if (r->switches[i].portal_id == portal_id) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+static bool room_is_switch_active_by_index(const Room *r, int switch_index) {
+    if (r == NULL || switch_index < 0 || switch_index >= r->switch_count) {
+        return false;
+    }
+
+    if (r->pushables == NULL) {
+        return false;
+    }
+
+    int switch_x = r->switches[switch_index].x;
+    int switch_y = r->switches[switch_index].y;
+    for (int i = 0; i < r->pushable_count; i++) {
+        if (r->pushables[i].x == switch_x && r->pushables[i].y == switch_y) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static bool room_is_portal_locked_by_index(const Room *r, int portal_index) {
+    if (r == NULL || portal_index < 0 || portal_index >= r->portal_count) {
+        return false;
+    }
+
+    const Portal *portal = &r->portals[portal_index];
+    if (!portal->gated) {
+        return false;
+    }
+
+    int switch_index = room_find_switch_index_by_id(r, portal->required_switch_id);
+    if (switch_index < 0) {
+        switch_index = room_find_switch_index_for_portal(r, portal->id);
+    }
+    if (switch_index < 0) {
+        return true;
+    }
+
+    return !room_is_switch_active_by_index(r, switch_index);
+}
+
+Status room_get_usable_portal_destination(const Room *r, int x, int y, int *dest_out) {
+    if (r == NULL) {
+        return INVALID_ARGUMENT;
+    }
+    if (dest_out == NULL) {
+        return NULL_POINTER;
+    }
+
+    int portal_index = room_find_portal_index_at(r, x, y);
+    if (portal_index < 0) {
+        return ROOM_NO_PORTAL;
+    }
+
+    if (room_is_portal_locked_by_index(r, portal_index)) {
+        return ROOM_IMPASSABLE;
+    }
+
+    *dest_out = r->portals[portal_index].target_room_id;
+    return OK;
+}
+
 
 /* ============================================================
  * Walkability
