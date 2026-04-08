@@ -20,6 +20,9 @@ class GameUI:
         self._player_name = "Player"
         self._visited_rooms: set[int] = set()
         self._quit_reason = "Quit requested"
+        self._colors_enabled = False
+        self._graph_room_ids: list[int] = []
+        self._graph_adjacency: list[list[bool]] = []
 
     def run(self, profile: dict[str, Any]) -> dict[str, Any]:
         """Launch the curses UI and return a session summary."""
@@ -38,6 +41,13 @@ class GameUI:
         self._player_name = self._show_startup_screen(stdscr, profile)
         self._visited_rooms = {self._engine.get_current_room_id()}
         self._message = f"Welcome, {self._player_name}."
+        self._init_colors()
+
+        try:
+            self._graph_room_ids, self._graph_adjacency = self._engine.get_adjacency_matrix()
+        except GameError:
+            self._graph_room_ids = []
+            self._graph_adjacency = []
 
         while True:
             self._draw_game_screen(stdscr)
@@ -155,12 +165,107 @@ class GameUI:
         self._safe_addstr(stdscr, 1, 0, f"Room {snapshot['room_id']}")
 
         self._draw_room_lines(stdscr, room_lines)
+        self._draw_minimap(stdscr, snapshot, room_lines)
         self._draw_footer(stdscr, snapshot, room_lines)
         stdscr.refresh()
 
+    def _init_colors(self) -> None:
+        if not curses.has_colors():
+            self._colors_enabled = False
+            return
+
+        curses.start_color()
+        try:
+            curses.use_default_colors()
+        except curses.error:
+            pass
+
+        curses.init_pair(1, curses.COLOR_GREEN, -1)   # current room
+        curses.init_pair(2, curses.COLOR_CYAN, -1)    # visited room
+        curses.init_pair(3, curses.COLOR_WHITE, -1)   # unvisited room
+        curses.init_pair(4, curses.COLOR_YELLOW, -1)  # header/legend
+        curses.init_pair(5, curses.COLOR_BLUE, -1)    # wall
+        curses.init_pair(6, curses.COLOR_WHITE, -1)   # floor
+        curses.init_pair(7, curses.COLOR_GREEN, -1)   # player
+        curses.init_pair(8, curses.COLOR_YELLOW, -1)  # treasure
+        curses.init_pair(9, curses.COLOR_MAGENTA, -1) # portal
+        curses.init_pair(10, curses.COLOR_CYAN, -1)   # pushable
+        self._colors_enabled = True
+
+    def _room_attr(self, room_id: int, current_room_id: int) -> int:
+        if not self._colors_enabled:
+            return curses.A_BOLD if room_id == current_room_id else 0
+
+        if room_id == current_room_id:
+            return curses.color_pair(1) | curses.A_BOLD
+        if room_id in self._visited_rooms:
+            return curses.color_pair(2)
+        return curses.color_pair(3)
+
+    def _draw_minimap(self, stdscr, snapshot: dict[str, Any], room_lines: list[str]) -> None:
+        room_width = max((len(line) for line in room_lines), default=0)
+        panel_col = room_width + 6
+        panel_row = 3
+
+        title_attr = (curses.color_pair(4) | curses.A_BOLD) if self._colors_enabled else curses.A_BOLD
+        self._safe_addstr(stdscr, panel_row, panel_col, "Mini-map (room graph)", title_attr)
+
+        if not self._graph_room_ids or not self._graph_adjacency:
+            self._safe_addstr(stdscr, panel_row + 1, panel_col, "Graph unavailable")
+            return
+
+        ids = self._graph_room_ids
+        max_rooms = min(len(ids), 10)
+        ids = ids[:max_rooms]
+
+        header = "     " + " ".join(f"{room_id:>2}" for room_id in ids)
+        self._safe_addstr(stdscr, panel_row + 1, panel_col, header)
+
+        current_room_id = int(snapshot["room_id"])
+        for row_index, from_room_id in enumerate(ids):
+            marker = "@" if from_room_id == current_room_id else ("v" if from_room_id in self._visited_rooms else ".")
+            row_label = f"{marker}{from_room_id:>3} "
+            row = ["1" if self._graph_adjacency[row_index][col_index] else "." for col_index in range(max_rooms)]
+            row_text = " ".join(f"{cell:>2}" for cell in row)
+
+            draw_row = panel_row + 2 + row_index
+            self._safe_addstr(stdscr, draw_row, panel_col, row_label, self._room_attr(from_room_id, current_room_id))
+            self._safe_addstr(stdscr, draw_row, panel_col + len(row_label), row_text)
+
+        legend_row = panel_row + 3 + max_rooms
+        self._safe_addstr(stdscr, legend_row, panel_col, "@ current  v visited  . unvisited")
+        self._safe_addstr(stdscr, legend_row + 1, panel_col, "Matrix: row -> column unique room link")
+        self._safe_addstr(stdscr, legend_row + 2, panel_col, "(multiple portals to same room count as one link)")
+
     def _draw_room_lines(self, stdscr, room_lines: list[str]) -> None:
-        for index, line in enumerate(room_lines, start=3):
-            self._safe_addstr(stdscr, index, 2, line)
+        for row_index, line in enumerate(room_lines, start=3):
+            if not self._colors_enabled:
+                self._safe_addstr(stdscr, row_index, 2, line)
+                continue
+
+            for col_offset, ch in enumerate(line):
+                attr = self._tile_attr(ch)
+                self._safe_addstr(stdscr, row_index, 2 + col_offset, ch, attr)
+
+    def _tile_attr(self, tile: str) -> int:
+        if not self._colors_enabled or not tile:
+            return 0
+
+        ch = tile[0]
+        if ch == "#":
+            return curses.color_pair(5)
+        if ch == ".":
+            return curses.color_pair(6)
+        if ch == "@":
+            return curses.color_pair(7) | curses.A_BOLD
+        if ch == "$":
+            return curses.color_pair(8) | curses.A_BOLD
+        if ch == "X":
+            return curses.color_pair(9) | curses.A_BOLD
+        if ch == "O":
+            return curses.color_pair(10) | curses.A_BOLD
+
+        return curses.color_pair(6)
 
     def _draw_footer(self, stdscr, snapshot: dict[str, Any], room_lines: list[str]) -> None:
         controls_row = 4 + len(room_lines)
@@ -289,8 +394,9 @@ class GameUI:
     def _ensure_terminal_size(self, stdscr, room_lines: list[str]) -> None:
         max_y, max_x = stdscr.getmaxyx()
         room_width = max((len(line) for line in room_lines), default=0)
-        min_height = len(room_lines) + 9
-        min_width = max(room_width + 4, 64)
+        graph_rows = max(7, min(len(self._graph_room_ids), 10) + 6)
+        min_height = max(len(room_lines) + 9, 3 + graph_rows)
+        min_width = max(room_width + 42, 86)
         if max_y < min_height or max_x < min_width:
             raise RuntimeError(
                 f"Terminal too small. Need at least {min_width}x{min_height}."

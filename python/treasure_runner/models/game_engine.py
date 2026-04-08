@@ -119,6 +119,29 @@ class GameEngine:
         finally:
             lib.game_engine_free_string(ctypes.cast(ids_out, ctypes.c_void_p))
 
+    def has_edge(self, from_room_id: int, to_room_id: int) -> bool:
+        eng = self._require_engine()
+        has_edge_out = ctypes.c_bool()
+        status = lib.game_engine_has_edge(
+            eng,
+            int(from_room_id),
+            int(to_room_id),
+            ctypes.byref(has_edge_out),
+        )
+        if status != Status.OK:
+            raise status_to_exception(status, "game_engine_has_edge failed")
+        return bool(has_edge_out.value)
+
+    def get_adjacency_matrix(self) -> tuple[list[int], list[list[bool]]]:
+        room_ids = sorted(self.get_room_ids())
+        matrix: list[list[bool]] = []
+        for from_room_id in room_ids:
+            row: list[bool] = []
+            for to_room_id in room_ids:
+                row.append(self.has_edge(from_room_id, to_room_id))
+            matrix.append(row)
+        return room_ids, matrix
+
     def get_current_room_id(self) -> int:
         return self.player.get_room()
 

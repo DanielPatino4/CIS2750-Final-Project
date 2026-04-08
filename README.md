@@ -1,4 +1,4 @@
-# A2 CIS\*2750
+# A3 CIS\*2750
 
 ## Student Information
 
@@ -15,7 +15,7 @@ By placing my name below, I affirm that:
 3. I understand that possible violations of academic integrity will be addressed according to University of Guelph regulations.
 
 Digital Signature (type your full name): Daniel Patino
-Date: Mar 6, 2026
+Date: Mar 30, 2026
 
 
 

@@ -253,6 +253,37 @@ Status game_engine_get_room_count(const GameEngine *eng, int *count_out) {
     return OK;
 }
 
+Status game_engine_get_total_treasure_count(const GameEngine *eng, int *count_out) {
+    if (eng == NULL) {
+        return INVALID_ARGUMENT;
+    }
+    if (count_out == NULL) {
+        return NULL_POINTER;
+    }
+    if (eng->graph == NULL) {
+        return INTERNAL_ERROR;
+    }
+
+    const void * const *rooms = NULL;
+    int room_count = 0;
+    GraphStatus graph_status = graph_get_all_payloads(eng->graph, &rooms, &room_count);
+    if (graph_status != GRAPH_STATUS_OK) {
+        return INTERNAL_ERROR;
+    }
+
+    int total_treasure_count = 0;
+    for (int i = 0; i < room_count; i++) {
+        const Room *room = (const Room *)rooms[i];
+        if (room == NULL) {
+            return INTERNAL_ERROR;
+        }
+        total_treasure_count += room->treasure_count;
+    }
+
+    *count_out = total_treasure_count;
+    return OK;
+}
+
 
 Status game_engine_get_room_dimensions(const GameEngine *eng,
                                        int *width_out,
@@ -462,6 +493,35 @@ Status game_engine_get_room_ids(const GameEngine *eng,
 
     *ids_out = ids;
     *count_out = num_rooms;
+    return OK;
+}
+
+Status game_engine_has_edge(const GameEngine *eng,
+                            int from_room_id,
+                            int to_room_id,
+                            bool *has_edge_out) {
+    if (eng == NULL) {
+        return INVALID_ARGUMENT;
+    }
+    if (has_edge_out == NULL) {
+        return NULL_POINTER;
+    }
+
+    Room from_key;
+    from_key.id = from_room_id;
+    const Room *from_room = (const Room *)graph_get_payload(eng->graph, &from_key);
+    if (from_room == NULL) {
+        return GE_NO_SUCH_ROOM;
+    }
+
+    Room to_key;
+    to_key.id = to_room_id;
+    const Room *to_room = (const Room *)graph_get_payload(eng->graph, &to_key);
+    if (to_room == NULL) {
+        return GE_NO_SUCH_ROOM;
+    }
+
+    *has_edge_out = graph_has_edge(eng->graph, from_room, to_room);
     return OK;
 }
 

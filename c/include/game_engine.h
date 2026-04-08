@@ -138,6 +138,18 @@ Status game_engine_get_room_count(const GameEngine *eng,
                                   int *count_out);
 
 /*
+ * Retrieve the total number of treasures in the loaded world.
+ *
+ * Returns:
+ *   OK on success (count_out is set)
+ *   INVALID_ARGUMENT if eng is NULL
+ *   NULL_POINTER if count_out is NULL
+ *   INTERNAL_ERROR if graph is invalid
+ */
+Status game_engine_get_total_treasure_count(const GameEngine *eng,
+                                            int *count_out);
+
+/*
  * Retrieve the width and height of the player's current room.
  *
  * Returns:
@@ -246,6 +258,20 @@ Status game_engine_render_room(const GameEngine *eng,
 Status game_engine_get_room_ids(const GameEngine *eng,
                                 int **ids_out,
                                 int *count_out);
+
+/*
+ * Query whether a directed edge exists between two room IDs.
+ *
+ * Returns:
+ *   OK on success (has_edge_out is set)
+ *   INVALID_ARGUMENT if eng is NULL
+ *   NULL_POINTER if has_edge_out is NULL
+ *   GE_NO_SUCH_ROOM if either room ID is not found
+ */
+Status game_engine_has_edge(const GameEngine *eng,
+                            int from_room_id,
+                            int to_room_id,
+                            bool *has_edge_out);
 
 
 // **********************************************************                                

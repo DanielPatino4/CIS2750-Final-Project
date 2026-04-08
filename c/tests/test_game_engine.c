@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "game_engine.h"
-#include "game_engine_progress.h"
 #include "game_engine_portal.h"
 #include "player.h"
 #include "types.h"

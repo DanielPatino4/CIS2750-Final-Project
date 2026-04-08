@@ -147,6 +147,14 @@ lib.game_engine_get_room_ids.argtypes = [
 ]
 lib.game_engine_get_room_ids.restype = ctypes.c_int
 
+lib.game_engine_has_edge.argtypes = [
+    GameEngine,
+    ctypes.c_int,
+    ctypes.c_int,
+    ctypes.POINTER(ctypes.c_bool),
+]
+lib.game_engine_has_edge.restype = ctypes.c_int
+
 lib.game_engine_reset.argtypes = [GameEngine]
 lib.game_engine_reset.restype = ctypes.c_int
 
