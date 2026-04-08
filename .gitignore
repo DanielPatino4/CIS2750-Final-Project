@@ -34,6 +34,12 @@ dist/*
 *.log
 *.out
 *.tmp
+*.gcda
+*.gcno
+*.gcov
+c/coverage_build/
+c/coverage_bin/
+test_player
 
 # Virtual environments
 venv/
